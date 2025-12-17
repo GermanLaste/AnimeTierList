@@ -5,6 +5,9 @@ import html2canvas from 'html2canvas';
 import { AnimeSearch } from './components/AnimeSearch';
 import { TierRow } from './components/TierRow';
 import { DraggableAnime } from './components/DraggableAnime';
+// Agrega estos imports
+import { AnimeCard } from './components/AnimeCard';
+import { CinematicPreview } from './components/CinematicPreview';
 
 const INITIAL_ROWS = [
   { id: 'S', label: 'S', color: 'bg-red-500' },
@@ -40,6 +43,21 @@ function BankDroppable({ items, onRemove }) {
 }
 
 function App() {
+  const [previewAnime, setPreviewAnime] = useState(null);
+const previewTimeoutRef = useRef(null);
+
+// Funciones para manejar el hover con un pequeño delay (debounce) para que no sea molesto
+const handleAnimeHoverStart = (anime) => {
+    if (previewTimeoutRef.current) clearTimeout(previewTimeoutRef.current);
+    previewTimeoutRef.current = setTimeout(() => {
+        setPreviewAnime(anime);
+    }, 400); // 400ms de delay: solo muestra si el usuario se interesa de verdad
+};
+
+const handleAnimeHoverEnd = () => {
+    if (previewTimeoutRef.current) clearTimeout(previewTimeoutRef.current);
+    setPreviewAnime(null);
+};
   const [tierTitle, setTierTitle] = useState("MI TIER LIST DE ANIME");
   const [rows, setRows] = useState(INITIAL_ROWS);
   const [items, setItems] = useState(() => {
@@ -245,13 +263,16 @@ function App() {
         </main>
         
         {/* DragOverlay SIN el borde azul feo (ring-4 eliminado) */}
-        <DragOverlay>
-            {activeAnime ? (
-                <div className="rotate-3 cursor-grabbing shadow-2xl rounded-lg overflow-hidden scale-110 z-50 pointer-events-none">
-                    <img src={activeAnime.images.jpg.image_url} className="w-20 h-28 object-cover rounded-lg" />
-                </div>
-            ) : null}
-        </DragOverlay>
+        <DragOverlay dropAnimation={{
+      duration: 250,
+      easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)', // Efecto rebote al soltar
+}}>
+    {activeAnime ? (
+        <div className="cursor-grabbing">
+             <AnimeCard anime={activeAnime} isOverlay={true} />
+        </div>
+    ) : null}
+</DragOverlay>
 
       </div>
     </DndContext>
