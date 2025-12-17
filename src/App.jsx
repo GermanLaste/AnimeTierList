@@ -16,7 +16,8 @@ const INITIAL_ROWS = [
 
 const COLOR_POOL = ['bg-purple-500', 'bg-pink-500', 'bg-indigo-500', 'bg-teal-500', 'bg-cyan-500'];
 
-function BankDroppable({ items }) {
+// Actualizamos BankDroppable para recibir onRemove
+function BankDroppable({ items, onRemove }) {
   const { setNodeRef } = useDroppable({ id: 'bank' });
   return (
     <SortableContext items={items.map(i => i.mal_id)} id="bank">
@@ -31,7 +32,7 @@ function BankDroppable({ items }) {
             </div>
         )}
         {items.map((anime) => (
-          <DraggableAnime key={anime.mal_id} id={anime.mal_id} anime={anime} />
+          <DraggableAnime key={anime.mal_id} id={anime.mal_id} anime={anime} onRemove={onRemove} />
         ))}
       </div>
     </SortableContext>
@@ -47,10 +48,25 @@ function App() {
       return initialState;
   });
   const [activeId, setActiveId] = useState(null);
-  // Nuevo estado para guardar temporalmente el anime que estamos arrastrando desde el buscador
   const [draggedSearchResult, setDraggedSearchResult] = useState(null);
-  
   const tierListRef = useRef(null);
+
+  // --- NUEVA FUNCIÓN: Eliminar item ---
+  const handleRemoveItem = (animeId) => {
+    setItems((prev) => {
+        const newState = { ...prev };
+        // Buscar y eliminar del banco
+        newState.bank = newState.bank.filter(i => i.mal_id !== animeId);
+        // Buscar y eliminar de todas las filas
+        Object.keys(newState).forEach(key => {
+            if (key !== 'bank') {
+                newState[key] = newState[key].filter(i => i.mal_id !== animeId);
+            }
+        });
+        return newState;
+    });
+  };
+  // ------------------------------------
 
   const addNewRow = () => {
     const newId = `tier-${Date.now()}`;
@@ -80,13 +96,9 @@ function App() {
     }
   };
 
-  // --- LOGICA DRAG & DROP ACTUALIZADA ---
-
   const handleDragStart = (event) => {
       const { active } = event;
       setActiveId(active.id);
-      
-      // Si viene del buscador (tiene data.fromSearch), guardamos el anime en un estado temporal
       if (active.data.current?.fromSearch) {
           setDraggedSearchResult(active.data.current.anime);
       }
@@ -94,23 +106,19 @@ function App() {
   
   const handleDragEnd = (event) => {
     const { active, over } = event;
-    setDraggedSearchResult(null); // Limpiamos el estado temporal
+    setDraggedSearchResult(null); 
     setActiveId(null);
 
     if (!over) return;
 
-    // CASO 1: Viene del Buscador (ID empieza con 'search-')
     if (active.data.current?.fromSearch) {
         const anime = active.data.current.anime;
         const findContainer = (id) => (id in items) ? id : Object.keys(items).find((key) => items[key].find((i) => i.mal_id === id));
         const overContainer = findContainer(over.id) || over.id;
 
-        // Si soltamos en un lugar válido (Tier o Banco)
         if (overContainer && items[overContainer]) {
-            // Verificar duplicados en TODO el tablero
             const allItems = Object.values(items).flat();
             const exists = allItems.find(i => i.mal_id === anime.mal_id);
-            
             if (!exists) {
                 setItems(prev => ({
                     ...prev,
@@ -121,7 +129,6 @@ function App() {
         return;
     }
 
-    // CASO 2: Movimiento normal (ya existe en el tablero)
     const findContainer = (id) => (id in items) ? id : Object.keys(items).find((key) => items[key].find((i) => i.mal_id === id));
     
     const activeContainer = findContainer(active.id);
@@ -151,9 +158,6 @@ function App() {
     }
   };
 
-  // Determinar qué imagen mostrar en el overlay
-  // 1. Si está en el estado 'draggedSearchResult' (viene del buscador)
-  // 2. O buscarlo en los items existentes
   const activeAnime = draggedSearchResult 
     ? draggedSearchResult 
     : (activeId ? Object.values(items).flat().find(i => i.mal_id === activeId) : null);
@@ -173,7 +177,6 @@ function App() {
         
         <main className="max-w-[1600px] mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
-          {/* COLUMNA IZQUIERDA: Tier List */}
           <div className="lg:col-span-8 xl:col-span-9 flex flex-col gap-6">
             <div className="bg-gray-800/30 p-6 rounded-2xl border border-gray-700/50 shadow-2xl">
                 
@@ -191,7 +194,8 @@ function App() {
                             key={row.id} 
                             row={row} 
                             items={items[row.id]}
-                            onRename={handleRenameRow} 
+                            onRename={handleRenameRow}
+                            onRemove={handleRemoveItem} // Pasamos la función
                         />
                     ))}
                 </div>
@@ -218,7 +222,6 @@ function App() {
             </div>
           </div>
           
-          {/* COLUMNA DERECHA: Panel Unificado */}
           <div className="lg:col-span-4 xl:col-span-3 flex flex-col gap-6 sticky top-24">
             <div className="bg-[#111827] rounded-2xl border border-gray-800 shadow-xl overflow-hidden flex flex-col h-[calc(100vh-120px)]">
                 <div className="p-4 border-b border-gray-800 bg-gray-900/50">
@@ -232,7 +235,7 @@ function App() {
                     </div>
                     <div className="flex-1 overflow-hidden relative">
                          <div className="absolute inset-0 overflow-y-auto custom-scrollbar">
-                            <BankDroppable items={items.bank} />
+                            <BankDroppable items={items.bank} onRemove={handleRemoveItem} />
                          </div>
                     </div>
                 </div>
@@ -241,9 +244,10 @@ function App() {
 
         </main>
         
+        {/* DragOverlay SIN el borde azul feo (ring-4 eliminado) */}
         <DragOverlay>
             {activeAnime ? (
-                <div className="rotate-3 cursor-grabbing shadow-2xl rounded-lg overflow-hidden ring-4 ring-blue-500 scale-110 z-50 pointer-events-none">
+                <div className="rotate-3 cursor-grabbing shadow-2xl rounded-lg overflow-hidden scale-110 z-50 pointer-events-none">
                     <img src={activeAnime.images.jpg.image_url} className="w-20 h-28 object-cover rounded-lg" />
                 </div>
             ) : null}

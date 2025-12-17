@@ -63,7 +63,7 @@ export function AnimeSearch({ onSelect }) {
         </div>
         <input
           type="text"
-          placeholder="Busca tu anime favorito..."
+          placeholder="Busca tu anime..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           className="w-full pl-10 pr-4 py-3 rounded-xl bg-gray-900 border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-inner"
