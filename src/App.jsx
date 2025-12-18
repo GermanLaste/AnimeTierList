@@ -17,6 +17,7 @@ import { CinematicPreview } from './components/CinematicPreview';
 import { AnimeCard } from './components/AnimeCard';
 import { ConfirmationModal } from './components/ConfirmationModal';
 
+
 // --- COLORES ---
 const INITIAL_ROWS = [
   { id: 'S', label: 'S', color: 'from-yellow-300 via-amber-400 to-yellow-500' },
@@ -239,13 +240,45 @@ function App() {
 
   const activeAnimeData = activeItem?.type === 'Anime' ? (draggedSearchResult || Object.values(items).flat().find(i => i.mal_id === activeId)) : null;
 
+  // --- CÁLCULOS PARA EL DASHBOARD (Poner esto antes del return) ---
+  const allRankedCount = Object.entries(items)
+      .filter(([key]) => key !== 'bank')
+      .reduce((sum, [, tierItems]) => sum + tierItems.length, 0);
+  const bankCount = items.bank.length;
+  const totalCount = allRankedCount + bankCount;
+  // -------------------------------------------------------------
+
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-      <div className="min-h-screen bg-[#0b0f19] text-white pb-32 font-sans selection:bg-blue-500/30 overflow-x-hidden">
-        <ConfirmationModal isOpen={deleteModal.isOpen} onClose={() => setDeleteModal({ ...deleteModal, isOpen: false })} onConfirm={confirmDeleteTier} title="¿Eliminar Tier?" message="Los animes volverán a tu colección." />
+      
+      {/* Contenedor principal con 'relative' para contener el fondo absoluto */}
+      <div className="min-h-screen bg-[#0b0f19] text-white flex flex-col font-sans selection:bg-blue-500/30 overflow-x-hidden relative">
+        
+        {/* --- 1. FONDO AURORA (ATMÓSFERA) --- */}
+        {/* Esto le da el toque "Premium" de fondo moviéndose */}
+        <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+             <div className="absolute top-[-10%] left-[-10%] w-[40vw] h-[40vw] rounded-full bg-blue-600/20 blur-[100px] animate-pulse"></div>
+             <div className="absolute bottom-[-10%] right-[-10%] w-[40vw] h-[40vw] rounded-full bg-purple-600/20 blur-[100px] animate-pulse delay-1000"></div>
+             <div className="absolute top-[40%] left-[40%] w-[20vw] h-[20vw] rounded-full bg-pink-600/10 blur-[80px] animate-pulse delay-700"></div>
+             <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-[0.03]"></div>
+        </div>
+
+        {/* Modal de Confirmación */}
+        <ConfirmationModal 
+            isOpen={deleteModal.isOpen} 
+            onClose={() => setDeleteModal({ ...deleteModal, isOpen: false })} 
+            onConfirm={confirmDeleteTier} 
+            title="¿Eliminar Tier?" 
+            message="Los animes volverán a tu colección." 
+        />
+
+        {/* --- HEADER --- */}
         <header className="bg-[#111827]/80 backdrop-blur-md sticky top-0 z-40 border-b border-gray-800">
           <div className="max-w-[1600px] mx-auto px-6 py-4 flex justify-between items-center">
-             <div className="flex items-center gap-2"><div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg shadow-lg shadow-blue-500/20"></div><h1 className="text-xl font-bold tracking-tight text-gray-100 hidden sm:block">Anime<span className="text-blue-500">Tier</span>Maker</h1></div>
+             <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg shadow-lg shadow-blue-500/20"></div>
+                <h1 className="text-xl font-bold tracking-tight text-gray-100 hidden sm:block">Anime<span className="text-blue-500">Tier</span>Maker</h1>
+             </div>
              <div className="flex items-center gap-2 bg-gray-800/50 p-1.5 rounded-xl border border-gray-700/50">
                 <ActionButton onClick={addNewRow} tooltip="Añadir Tier" hideOnExport={true} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" /></svg>} />
                 <div className="w-px h-6 bg-gray-700 mx-1"></div>
@@ -254,45 +287,82 @@ function App() {
              </div>
           </div>
         </header>
-        <main className="max-w-[1400px] mx-auto px-4 py-8 flex flex-col gap-6">
-          <div className="bg-gray-800/30 p-6 rounded-2xl border border-gray-700/50 shadow-2xl">
-              <div ref={tierListRef} className="flex flex-col gap-2 bg-[#1a1d26] p-4 rounded-xl">
-                  <input value={tierTitle} onChange={(e) => setTierTitle(e.target.value)} className="w-full bg-transparent text-center text-3xl md:text-5xl font-black text-white p-4 mb-4 outline-none border-b-2 border-transparent hover:border-gray-700 focus:border-blue-500 transition-colors uppercase placeholder-gray-600" placeholder="ESCRIBE UN TÍTULO..." maxLength={40} />
+
+        {/* --- MAIN --- */}
+        <main className="flex-1 max-w-[1400px] w-full mx-auto px-4 py-8 flex flex-col gap-6 relative z-10">
+          
+          {/* SECCIÓN PRINCIPAL: TIERS */}
+          <div className="bg-gray-800/40 backdrop-blur-sm p-6 rounded-2xl border border-gray-700/50 shadow-2xl">
+              <div ref={tierListRef} className="flex flex-col gap-2 bg-[#1a1d26] p-4 rounded-xl shadow-inner">
                   
-                  {/* --- AQUÍ ESTÁ LA MAGIA DEL REORDENAMIENTO DE FILAS --- */}
+                  {/* Título */}
+                  <input value={tierTitle} onChange={(e) => setTierTitle(e.target.value)} className="w-full bg-transparent text-center text-3xl md:text-5xl font-black text-white p-4 mb-2 outline-none border-b-2 border-transparent hover:border-gray-700 focus:border-blue-500 transition-colors uppercase placeholder-gray-600" placeholder="ESCRIBE UN TÍTULO..." maxLength={40} />
+
+                  {/* --- 2. DASHBOARD ESTADÍSTICAS (Nuevo) --- */}
+                  <div className="grid grid-cols-3 gap-4 mb-6 px-4 md:px-12" data-hide-on-export="true">
+                      <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-2 flex flex-col items-center justify-center"><span className="text-xl md:text-2xl font-black text-blue-400">{totalCount}</span><span className="text-[10px] md:text-xs text-blue-300/70 uppercase tracking-wider font-bold">Total</span></div>
+                      <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-2 flex flex-col items-center justify-center"><span className="text-xl md:text-2xl font-black text-green-400">{allRankedCount}</span><span className="text-[10px] md:text-xs text-green-300/70 uppercase tracking-wider font-bold">Ranked</span></div>
+                      <div className="bg-purple-500/10 border border-purple-500/30 rounded-xl p-2 flex flex-col items-center justify-center"><span className="text-xl md:text-2xl font-black text-purple-400">{bankCount}</span><span className="text-[10px] md:text-xs text-purple-300/70 uppercase tracking-wider font-bold">Banco</span></div>
+                  </div>
+
+                  {/* Filas (Rows) */}
                   <SortableContext items={rows.map(r => r.id)} strategy={verticalListSortingStrategy}>
                     {rows.map((row) => (
-                        <TierRow key={row.id} 
-                    row={row} 
-                    items={items[row.id]} 
-                    onRename={handleRenameRow} 
-                    onColorChange={handleColorChange}  // <--- ¡AGREGAR ESTA PROP AQUÍ!
-                    onRemoveAnime={handleRemoveItem} 
-                    onDeleteTier={requestDeleteTier} 
-                    onHoverStart={handleHoverStart} 
-                    onHoverEnd={handleHoverEnd} />
+                        <TierRow 
+                            key={row.id} 
+                            row={row} 
+                            items={items[row.id]} 
+                            onRename={handleRenameRow} 
+                            onColorChange={handleColorChange}
+                            onRemoveAnime={handleRemoveItem} 
+                            onDeleteTier={requestDeleteTier} 
+                            onHoverStart={handleHoverStart} 
+                            onHoverEnd={handleHoverEnd} 
+                        />
                     ))}
                   </SortableContext>
-                  {/* ----------------------------------------------------- */}
 
-                  <div ref={footerRef} className="hidden pt-4 mt-2 border-t border-gray-800 text-center bg-[#1a1d26]"><p className="text-gray-500 text-sm font-bold uppercase tracking-widest">Creado en <span className="text-blue-500">AnimeTierMaker</span></p></div>
+                  {/* Footer Oculto (Marca de Agua para la foto) */}
+                  <div ref={footerRef} className="hidden pt-4 mt-2 border-t border-gray-800 text-center bg-[#1a1d26]">
+                      <p className="text-gray-500 text-sm font-bold uppercase tracking-widest">Creado en <span className="text-blue-500">AnimeTierMaker</span></p>
+                  </div>
               </div>
           </div>
+
+          {/* SECCIÓN INFERIOR: BUSCADOR Y BANCO */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start mt-2">
-            <div className="lg:col-span-3 bg-[#111827] rounded-xl border border-gray-800 p-4 h-[500px] flex flex-col"><h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Buscador</h3><AnimeSearch onSelect={handleSelectAnime} onHoverStart={handleHoverStart} onHoverEnd={handleHoverEnd} existingIds={existingAnimeIds} /></div>
-            <div className="lg:col-span-9 bg-[#111827] rounded-xl border border-gray-800 p-4 h-[500px] flex flex-col"><div className="flex justify-between items-center mb-2 px-2"><h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Tu Colección <span className="text-blue-500">({items.bank.length})</span></h3></div><div className="flex-1 min-h-0 relative"><div className="absolute inset-0"><BankDroppable items={items.bank} onRemove={handleRemoveItem} onHoverStart={handleHoverStart} onHoverEnd={handleHoverEnd} /></div></div></div>
+            <div className="lg:col-span-3 bg-[#111827]/80 backdrop-blur rounded-xl border border-gray-800 p-4 h-[500px] flex flex-col shadow-lg">
+                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Buscador</h3>
+                <AnimeSearch onSelect={handleSelectAnime} onHoverStart={handleHoverStart} onHoverEnd={handleHoverEnd} existingIds={existingAnimeIds} />
+            </div>
+            <div className="lg:col-span-9 bg-[#111827]/80 backdrop-blur rounded-xl border border-gray-800 p-4 h-[500px] flex flex-col shadow-lg">
+                <div className="flex justify-between items-center mb-2 px-2">
+                    <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Tu Colección <span className="text-blue-500">({items.bank.length})</span></h3>
+                </div>
+                <div className="flex-1 min-h-0 relative">
+                    <div className="absolute inset-0">
+                        <BankDroppable items={items.bank} onRemove={handleRemoveItem} onHoverStart={handleHoverStart} onHoverEnd={handleHoverEnd} />
+                    </div>
+                </div>
+            </div>
           </div>
         </main>
+
+        {/* --- 4. FOOTER VISIBLE (Nuevo) --- */}
+        <footer className="border-t border-gray-800/50 py-6 text-center text-gray-500 text-sm mt-auto bg-[#111827]/50 backdrop-blur-md relative z-10">
+            <p>
+                Hecho con <span className="text-red-500 animate-pulse">❤</span> para fans del anime.
+            </p>
+        </footer>
         
-        {/* DRAG OVERLAY: Muestra lo que estás arrastrando (Anime o Fila) */}
+        {/* --- OVERLAYS Y PREVIEWS --- */}
         <DragOverlay dropAnimation={{ duration: 250, easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)' }}>
             {activeItem?.type === 'Anime' && activeAnimeData ? (
                 <div className="cursor-grabbing pointer-events-none"><AnimeCard anime={activeAnimeData} isOverlay={true} /></div>
             ) : null}
             {activeItem?.type === 'Row' ? (
-                // Vista previa de la Fila cuando la arrastras (simplificada)
-                 <div className="w-full h-24 bg-gray-800/90 border border-blue-500 rounded-xl flex items-center justify-center shadow-2xl">
-                    <span className="text-xl font-bold text-white uppercase">{activeItem.data.label}</span>
+                 <div className="w-full h-24 bg-gray-800/90 border border-blue-500 rounded-xl flex items-center justify-center shadow-2xl backdrop-blur-xl">
+                    <span className="text-2xl font-black text-white uppercase tracking-widest">{activeItem.data.label}</span>
                  </div>
             ) : null}
         </DragOverlay>
