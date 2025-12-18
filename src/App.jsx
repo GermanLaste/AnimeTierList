@@ -3,10 +3,11 @@ import {
   DndContext, 
   DragOverlay, 
   pointerWithin, 
-  closestCenter, // <--- IMPORTANTE: Volvemos a importar esto
+  closestCenter, 
   useSensor, 
   useSensors, 
-  PointerSensor 
+  PointerSensor,
+  useDroppable // <--- 1. IMPORTANTE: Agregado para arreglar el banco
 } from '@dnd-kit/core';
 import { SortableContext, horizontalListSortingStrategy, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 import { toPng } from 'html-to-image';
@@ -18,7 +19,7 @@ import { CinematicPreview } from './components/CinematicPreview';
 import { AnimeCard } from './components/AnimeCard';
 import { ConfirmationModal } from './components/ConfirmationModal';
 import { LogoIcon } from './components/LogoIcon.jsx';
-
+import { ResizeHandle } from './components/ResizeHandle';
 // --- COLORES ---
 const INITIAL_ROWS = [
   { id: 'S', label: 'S', color: 'from-yellow-300 via-amber-400 to-yellow-500' },
@@ -36,27 +37,28 @@ const COLOR_POOL = [
   'from-indigo-400 to-violet-600',
 ];
 
-// --- ESTRATEGIA DE COLISIÓN HÍBRIDA (LA SOLUCIÓN) ---
-// Esta función decide qué algoritmo usar dependiendo de qué estamos arrastrando
+// --- ESTRATEGIA DE COLISIÓN HÍBRIDA ---
 function customCollisionDetection(args) {
     const { active } = args;
-
-    // 1. Si estamos arrastrando una FILA (Row), usamos closestCenter
-    // Esto permite que el reordenamiento sea fluido aunque no apuntes perfecto
     if (active.data.current?.type === 'Row') {
         return closestCenter(args);
     }
-
-    // 2. Si estamos arrastrando un ANIME, usamos pointerWithin
-    // Esto asegura que el anime caiga en el tier solo si el mouse está DENTRO
     return pointerWithin(args);
 }
 
 // --- COMPONENTES AUXILIARES ---
 function BankDroppable({ items, onRemove, onHoverStart, onHoverEnd }) {
+  // 1. CORRECCIÓN BANCO: Hacemos que esta zona sea "droppable"
+  const { setNodeRef } = useDroppable({
+    id: 'bank',
+  });
+
   return (
     <SortableContext items={items.map(i => i.mal_id)} id="bank" strategy={horizontalListSortingStrategy}>
-      <div className="flex flex-row flex-wrap content-start gap-4 p-4 w-full h-full overflow-y-auto custom-scrollbar bg-gray-900/50 rounded-xl border border-gray-700/50 shadow-inner">
+      <div 
+        ref={setNodeRef} // Conectamos la referencia aquí
+        className="flex flex-row flex-wrap content-start gap-4 p-4 w-full h-full overflow-y-auto custom-scrollbar bg-gray-900/50 rounded-xl border border-gray-700/50 shadow-inner"
+      >
         {items.length === 0 && (
             <div className="flex flex-col items-center justify-center text-gray-500 opacity-40 w-full h-full gap-3">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" /></svg>
@@ -129,7 +131,6 @@ function App() {
     setRows((prevRows) => prevRows.map(row => row.id === rowId ? { ...row, color: newColorClass } : row));
   };
   
-  // --- ACCIONES DEL MODAL ---
   const requestResetBoard = () => {
     setConfirmation({
         isOpen: true,
@@ -200,11 +201,23 @@ function App() {
   const handleHoverStart = (anime) => { if (previewTimeoutRef.current) clearTimeout(previewTimeoutRef.current); previewTimeoutRef.current = setTimeout(() => { setPreviewAnime(anime); }, 400); };
   const handleHoverEnd = () => { if (previewTimeoutRef.current) clearTimeout(previewTimeoutRef.current); setPreviewAnime(null); };
 
+  // 2. CORRECCIÓN EXPORTAR IMAGEN: Filtro unificado
   const handleDownloadImage = async () => {
       if (!tierListRef.current || !footerRef.current) return;
       try {
         footerRef.current.classList.remove('hidden');
-        const dataUrl = await toPng(tierListRef.current, { cacheBust: true, backgroundColor: '#111827', quality: 0.95, pixelRatio: 2, filter: (node) => node.getAttribute?.('data-hide-on-export') !== 'true' });
+        const dataUrl = await toPng(tierListRef.current, { 
+            cacheBust: true, 
+            backgroundColor: '#111827', 
+            quality: 0.95, 
+            pixelRatio: 2, 
+            filter: (node) => {
+                // Combina ambas formas de ocultar elementos
+                const hideExport = node.getAttribute?.('data-hide-on-export') === 'true';
+                const ignoreCanvas = node.getAttribute?.('data-html2canvas-ignore') === 'true';
+                return !hideExport && !ignoreCanvas;
+            }
+        });
         const link = document.createElement('a'); link.download = `${tierTitle.replace(/\s+/g, '-').toLowerCase()}-${Date.now()}.png`; link.href = dataUrl; link.click();
       } catch (error) { console.error(error); alert("Error al exportar."); } finally { if (footerRef.current) footerRef.current.classList.add('hidden'); }
   };
@@ -283,7 +296,6 @@ function App() {
   const totalCount = allRankedCount + bankCount;
 
   return (
-    // USAMOS LA ESTRATEGIA HÍBRIDA AQUÍ
     <DndContext sensors={sensors} collisionDetection={customCollisionDetection} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       
       <div className="min-h-screen bg-[#0b0f19] text-white flex flex-col font-sans selection:bg-blue-500/30 overflow-x-hidden relative">
@@ -300,34 +312,30 @@ function App() {
         <ConfirmationModal isOpen={confirmation.isOpen} onClose={() => setConfirmation({ ...confirmation, isOpen: false })} onConfirm={handleConfirmAction} title={confirmation.title} message={confirmation.message} />
 
         <header className="bg-[#111827]/80 backdrop-blur-md sticky top-0 z-40 border-b border-gray-800">
-  <div className="max-w-[1600px] mx-auto px-6 py-4 flex justify-between items-center">
-      
-      {/* LOGO + TEXTO (Separados para control total) */}
-      <div className="flex items-center gap-3">
-        {/* El Icono Nuevo */}
-        <div className="relative group">
-            <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg blur opacity-25 group-hover:opacity-50 transition duration-200"></div>
-            <LogoIcon className="relative w-10 h-10 shadow-xl" />
-        </div>
+          <div className="max-w-[1600px] mx-auto px-6 py-4 flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <div className="relative group">
+                    <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg blur opacity-25 group-hover:opacity-50 transition duration-200"></div>
+                    <LogoIcon className="relative w-10 h-10 shadow-xl" />
+                </div>
+                <h1 className="text-2xl font-bold tracking-tight text-gray-100 hidden sm:block font-['Outfit']">
+                    Anime<span className="text-blue-500">Tier</span>Maker
+                </h1>
+              </div>
 
-        {/* Tu Texto Original Restaurado */}
-        <h1 className="text-2xl font-bold tracking-tight text-gray-100 hidden sm:block font-['Outfit']">
-            Anime<span className="text-blue-500">Tier</span>Maker
-        </h1>
-      </div>
-
-      {/* TUS BOTONES (Sin cambios) */}
-      <div className="flex items-center gap-2 bg-gray-800/50 p-1.5 rounded-xl border border-gray-700/50">
-         <ActionButton onClick={addNewRow} tooltip="Añadir Tier" hideOnExport={true} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" /></svg>} />
-         <div className="w-px h-6 bg-gray-700 mx-1"></div>
-         <ActionButton onClick={requestResetBoard} danger={true} tooltip="Reset Total" hideOnExport={true} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" /></svg>} />
-         <ActionButton onClick={handleDownloadImage} tooltip="Exportar Imagen" icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" /></svg>} />
-      </div>
-  </div>
-</header>
+              <div className="flex items-center gap-2 bg-gray-800/50 p-1.5 rounded-xl border border-gray-700/50">
+                 <ActionButton onClick={addNewRow} tooltip="Añadir Tier" hideOnExport={true} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" /></svg>} />
+                 <div className="w-px h-6 bg-gray-700 mx-1"></div>
+                 <ActionButton onClick={requestResetBoard} danger={true} tooltip="Reset Total" hideOnExport={true} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" /></svg>} />
+                 <ActionButton onClick={handleDownloadImage} tooltip="Exportar Imagen" icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" /></svg>} />
+              </div>
+          </div>
+        </header>
 
         <main className="flex-1 max-w-[1400px] w-full mx-auto px-4 py-8 flex flex-col gap-6 relative z-10">
-          <div className="bg-gray-800/40 backdrop-blur-sm p-6 rounded-2xl border border-gray-700/50 shadow-2xl">
+          
+          {/* 3. CORRECCIÓN RESIZE: Clases para permitir achicar la Tier List */}
+          <div className="bg-gray-800/40 backdrop-blur-sm p-6 rounded-2xl border border-gray-700/50 shadow-2xl resize-y overflow-auto h-fit max-h-[80vh] custom-scrollbar min-h-[400px]">
               <div ref={tierListRef} className="flex flex-col gap-2 bg-[#1a1d26] p-4 rounded-xl shadow-inner">
                   <input value={tierTitle} onChange={(e) => setTierTitle(e.target.value)} className="w-full bg-transparent text-center text-3xl md:text-5xl font-black text-white p-4 mb-2 outline-none border-b-2 border-transparent hover:border-gray-700 focus:border-blue-500 transition-colors uppercase placeholder-gray-600" placeholder="ESCRIBE UN TÍTULO..." maxLength={40} />
 
@@ -358,29 +366,20 @@ function App() {
           </div>
         </main>
 
-<footer className="border-t border-gray-800/50 py-8 mt-auto bg-[#111827]/80 backdrop-blur-md relative z-10">
-  <div className="max-w-[1600px] mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-gray-400">
-    
-    {/* Copyright con año automático */}
-    <div className="flex items-center gap-2">
-      <span>&copy; {new Date().getFullYear()} AnimeTierMaker.</span>
-      <span className="hidden md:inline text-gray-600">|</span>
-      <span>Todos los derechos reservados.</span>
-    </div>
-    
-    {/* Tu firma como Dev */}
-    <div className="flex items-center gap-2">
-      <span className="text-gray-500">Creado por</span>
-      <a 
-        href="#" // Acá podés poner tu GitHub o Portfolio si querés
-        className="font-mono bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded border border-blue-500/20 hover:bg-blue-500/20 hover:border-blue-500/40 transition-colors cursor-default"
-      >
-        dev/GermanLaste
-      </a>
-    </div>
-
-  </div>
-</footer>        
+        <footer className="border-t border-gray-800/50 py-8 mt-auto bg-[#111827]/80 backdrop-blur-md relative z-10">
+          <div className="max-w-[1600px] mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-gray-400">
+            <div className="flex items-center gap-2">
+              <span>&copy; {new Date().getFullYear()} AnimeTierMaker.</span>
+              <span className="hidden md:inline text-gray-600">|</span>
+              <span>Todos los derechos reservados.</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-gray-500">Creado por</span>
+              <a href="#" className="font-mono bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded border border-blue-500/20 hover:bg-blue-500/20 hover:border-blue-500/40 transition-colors cursor-default">dev/GermanLaste</a>
+            </div>
+          </div>
+        </footer>        
+        
         <DragOverlay dropAnimation={{ duration: 250, easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)' }}>
             {activeItem?.type === 'Anime' && activeAnimeData ? (<div className="cursor-grabbing pointer-events-none"><AnimeCard anime={activeAnimeData} isOverlay={true} /></div>) : null}
             {activeItem?.type === 'Row' ? (<div className="w-full h-24 bg-gray-800/90 border border-blue-500 rounded-xl flex items-center justify-center shadow-2xl backdrop-blur-xl"><span className="text-2xl font-black text-white uppercase tracking-widest">{activeItem.data.label}</span></div>) : null}

@@ -74,6 +74,14 @@ Implemented a **Hybrid Collision Detection** strategy using `@dnd-kit`:
 - **Animation:** Framer Motion (Spring animations)
 - **Imaging:** `html-to-image` (OKLCH color support)
 
+## 🤝 Contributing
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## 📄 License
+This project is open source and available under the MIT License.
+
+<div align="center"> Created with ❤️ by <b>[GermanLaste]</b> </div>
+
 ## 🚀 Installation
 
 Clone the project and install dependencies:
@@ -90,11 +98,3 @@ npm install
 
 # Run development server
 npm run dev
-
-🤝 Contributing
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-📄 License
-This project is open source and available under the MIT License.
-
-<div align="center"> Created with ❤️ by <b>[GermanLaste]</b> </div>
