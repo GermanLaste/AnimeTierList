@@ -5,9 +5,8 @@ import html2canvas from 'html2canvas';
 import { AnimeSearch } from './components/AnimeSearch';
 import { TierRow } from './components/TierRow';
 import { DraggableAnime } from './components/DraggableAnime';
-// Agrega estos imports
-import { AnimeCard } from './components/AnimeCard';
-import { CinematicPreview } from './components/CinematicPreview';
+import { CinematicPreview } from './components/CinematicPreview'; // Asegúrate de haber creado este archivo
+import { AnimeCard } from './components/AnimeCard'; // Asegúrate de haber creado este archivo
 
 const INITIAL_ROWS = [
   { id: 'S', label: 'S', color: 'bg-red-500' },
@@ -19,23 +18,28 @@ const INITIAL_ROWS = [
 
 const COLOR_POOL = ['bg-purple-500', 'bg-pink-500', 'bg-indigo-500', 'bg-teal-500', 'bg-cyan-500'];
 
-// Actualizamos BankDroppable para recibir onRemove
-function BankDroppable({ items, onRemove }) {
+// --- BankDroppable Actualizado ---
+// Ahora recibe onHoverStart y onHoverEnd para pasárselos a las cartas
+function BankDroppable({ items, onRemove, onHoverStart, onHoverEnd }) {
   const { setNodeRef } = useDroppable({ id: 'bank' });
   return (
     <SortableContext items={items.map(i => i.mal_id)} id="bank">
-      <div ref={setNodeRef} className="flex flex-wrap content-start gap-2 min-h-[200px] max-h-[500px] overflow-y-auto custom-scrollbar p-1 transition-colors">
+      <div ref={setNodeRef} className="flex flex-wrap content-start gap-3 min-h-[200px] max-h-[500px] overflow-y-auto custom-scrollbar p-2 transition-colors">
         {items.length === 0 && (
             <div className="w-full h-40 flex flex-col items-center justify-center text-gray-500 border-2 border-dashed border-gray-700 rounded-xl">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 mb-2 opacity-50">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
-                </svg>
                 <p className="text-sm font-medium">Arrastra animes aquí</p>
                 <p className="text-xs opacity-60">o selecciónalos del buscador</p>
             </div>
         )}
         {items.map((anime) => (
-          <DraggableAnime key={anime.mal_id} id={anime.mal_id} anime={anime} onRemove={onRemove} />
+          <DraggableAnime 
+            key={anime.mal_id} 
+            id={anime.mal_id} 
+            anime={anime} 
+            onRemove={onRemove}
+            onHoverStart={() => onHoverStart(anime)} // Conectamos el hover
+            onHoverEnd={onHoverEnd}
+          />
         ))}
       </div>
     </SortableContext>
@@ -43,21 +47,6 @@ function BankDroppable({ items, onRemove }) {
 }
 
 function App() {
-  const [previewAnime, setPreviewAnime] = useState(null);
-const previewTimeoutRef = useRef(null);
-
-// Funciones para manejar el hover con un pequeño delay (debounce) para que no sea molesto
-const handleAnimeHoverStart = (anime) => {
-    if (previewTimeoutRef.current) clearTimeout(previewTimeoutRef.current);
-    previewTimeoutRef.current = setTimeout(() => {
-        setPreviewAnime(anime);
-    }, 400); // 400ms de delay: solo muestra si el usuario se interesa de verdad
-};
-
-const handleAnimeHoverEnd = () => {
-    if (previewTimeoutRef.current) clearTimeout(previewTimeoutRef.current);
-    setPreviewAnime(null);
-};
   const [tierTitle, setTierTitle] = useState("MI TIER LIST DE ANIME");
   const [rows, setRows] = useState(INITIAL_ROWS);
   const [items, setItems] = useState(() => {
@@ -65,17 +54,35 @@ const handleAnimeHoverEnd = () => {
       rows.forEach(row => initialState[row.id] = []);
       return initialState;
   });
+  
   const [activeId, setActiveId] = useState(null);
   const [draggedSearchResult, setDraggedSearchResult] = useState(null);
   const tierListRef = useRef(null);
 
-  // --- NUEVA FUNCIÓN: Eliminar item ---
+  // --- ESTADO Y LÓGICA DEL PREVIEW CINEMATOGRÁFICO ---
+  const [previewAnime, setPreviewAnime] = useState(null);
+  const previewTimeoutRef = useRef(null);
+
+  const handleHoverStart = (anime) => {
+    // Limpiamos cualquier timeout anterior
+    if (previewTimeoutRef.current) clearTimeout(previewTimeoutRef.current);
+    
+    // Esperamos 400ms antes de mostrar el preview (para evitar parpadeos si pasas rápido el mouse)
+    previewTimeoutRef.current = setTimeout(() => {
+        setPreviewAnime(anime);
+    }, 400); 
+  };
+
+  const handleHoverEnd = () => {
+    if (previewTimeoutRef.current) clearTimeout(previewTimeoutRef.current);
+    setPreviewAnime(null);
+  };
+  // ----------------------------------------------------
+
   const handleRemoveItem = (animeId) => {
     setItems((prev) => {
         const newState = { ...prev };
-        // Buscar y eliminar del banco
         newState.bank = newState.bank.filter(i => i.mal_id !== animeId);
-        // Buscar y eliminar de todas las filas
         Object.keys(newState).forEach(key => {
             if (key !== 'bank') {
                 newState[key] = newState[key].filter(i => i.mal_id !== animeId);
@@ -84,7 +91,6 @@ const handleAnimeHoverEnd = () => {
         return newState;
     });
   };
-  // ------------------------------------
 
   const addNewRow = () => {
     const newId = `tier-${Date.now()}`;
@@ -120,6 +126,8 @@ const handleAnimeHoverEnd = () => {
       if (active.data.current?.fromSearch) {
           setDraggedSearchResult(active.data.current.anime);
       }
+      // Ocultar preview al empezar a arrastrar
+      handleHoverEnd();
   };
   
   const handleDragEnd = (event) => {
@@ -182,7 +190,7 @@ const handleAnimeHoverEnd = () => {
 
   return (
     <DndContext collisionDetection={rectIntersection} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-      <div className="min-h-screen bg-[#0b0f19] text-white pb-20 font-sans selection:bg-blue-500/30">
+      <div className="min-h-screen bg-[#0b0f19] text-white pb-20 font-sans selection:bg-blue-500/30 overflow-x-hidden">
         
         <header className="bg-[#111827]/80 backdrop-blur-md sticky top-0 z-40 border-b border-gray-800">
           <div className="max-w-[1400px] mx-auto px-6 py-4 flex justify-between items-center">
@@ -213,7 +221,9 @@ const handleAnimeHoverEnd = () => {
                             row={row} 
                             items={items[row.id]}
                             onRename={handleRenameRow}
-                            onRemove={handleRemoveItem} // Pasamos la función
+                            onRemove={handleRemoveItem}
+                            onHoverStart={handleHoverStart} // <--- Pasamos la función
+                            onHoverEnd={handleHoverEnd}     // <--- Pasamos la función
                         />
                     ))}
                 </div>
@@ -244,7 +254,11 @@ const handleAnimeHoverEnd = () => {
             <div className="bg-[#111827] rounded-2xl border border-gray-800 shadow-xl overflow-hidden flex flex-col h-[calc(100vh-120px)]">
                 <div className="p-4 border-b border-gray-800 bg-gray-900/50">
                     <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Buscar & Añadir</h2>
-                    <AnimeSearch onSelect={handleSelectAnime} />
+                    <AnimeSearch 
+        onSelect={handleSelectAnime} 
+        onHoverStart={handleHoverStart} // Agrega esta línea
+        onHoverEnd={handleHoverEnd}     // Agrega esta línea
+    />
                 </div>
                 <div className="flex-1 p-4 bg-gray-900/30 flex flex-col min-h-0">
                     <div className="flex justify-between items-end mb-3">
@@ -253,7 +267,12 @@ const handleAnimeHoverEnd = () => {
                     </div>
                     <div className="flex-1 overflow-hidden relative">
                          <div className="absolute inset-0 overflow-y-auto custom-scrollbar">
-                            <BankDroppable items={items.bank} onRemove={handleRemoveItem} />
+                            <BankDroppable 
+                                items={items.bank} 
+                                onRemove={handleRemoveItem}
+                                onHoverStart={handleHoverStart} // <--- Pasamos la función
+                                onHoverEnd={handleHoverEnd}     // <--- Pasamos la función
+                            />
                          </div>
                     </div>
                 </div>
@@ -262,17 +281,20 @@ const handleAnimeHoverEnd = () => {
 
         </main>
         
-        {/* DragOverlay SIN el borde azul feo (ring-4 eliminado) */}
+        {/* DRAG OVERLAY con AnimeCard para que se vea premium al arrastrar */}
         <DragOverlay dropAnimation={{
-      duration: 250,
-      easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)', // Efecto rebote al soltar
-}}>
-    {activeAnime ? (
-        <div className="cursor-grabbing">
-             <AnimeCard anime={activeAnime} isOverlay={true} />
-        </div>
-    ) : null}
-</DragOverlay>
+          duration: 250,
+          easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
+        }}>
+            {activeAnime ? (
+                <div className="cursor-grabbing pointer-events-none">
+                     <AnimeCard anime={activeAnime} isOverlay={true} />
+                </div>
+            ) : null}
+        </DragOverlay>
+
+        {/* EL PREVIEW FLOTANTE */}
+        <CinematicPreview anime={previewAnime} />
 
       </div>
     </DndContext>

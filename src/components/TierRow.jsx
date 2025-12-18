@@ -4,11 +4,11 @@ import { SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortabl
 import { DraggableAnime } from './DraggableAnime';
 import { motion } from 'framer-motion';
 
-export function TierRow({ row, items, onRename, onRemove, onHoverAnime }) {
+// Recibimos onHoverStart y onHoverEnd aquí
+export function TierRow({ row, items, onRename, onRemove, onHoverStart, onHoverEnd }) {
   const { setNodeRef, isOver } = useDroppable({ id: row.id });
   const textareaRef = useRef(null);
 
-  // ... (tu lógica de adjustHeight sigue igual)
   const adjustHeight = () => {
     const textarea = textareaRef.current;
     if (textarea) {
@@ -16,13 +16,15 @@ export function TierRow({ row, items, onRename, onRemove, onHoverAnime }) {
         textarea.style.height = `${textarea.scrollHeight}px`;
     }
   };
-  useEffect(() => { adjustHeight(); }, [row.label]);
-  // ...
+
+  useEffect(() => {
+    adjustHeight();
+  }, [row.label]);
 
   return (
     <motion.div 
         ref={setNodeRef} 
-        // Animación reactiva al Drag & Drop (Ripple effect / Highlight)
+        // Animación reactiva cuando arrastras algo encima (brillo sutil)
         animate={{ 
             borderColor: isOver ? 'rgba(255,255,255, 0.5)' : 'rgba(31, 41, 55, 0.5)',
             backgroundColor: isOver ? 'rgba(31, 41, 55, 0.8)' : 'rgba(17, 24, 39, 1)',
@@ -31,9 +33,7 @@ export function TierRow({ row, items, onRename, onRemove, onHoverAnime }) {
         transition={{ duration: 0.2 }}
         className="flex min-h-[110px] rounded-xl overflow-hidden border border-gray-800 transition-all shadow-sm relative"
     >
-      {/* Indicador visual lateral */}
       <div className={`${row.color} w-24 flex items-center justify-center border-r border-black/20 p-2 relative z-10`}>
-        {/* Patrón de fondo sutil en la caja de color */}
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10 mix-blend-overlay"></div>
         
         <textarea
@@ -55,12 +55,12 @@ export function TierRow({ row, items, onRename, onRemove, onHoverAnime }) {
                 id={anime.mal_id} 
                 anime={anime} 
                 onRemove={onRemove}
-                onHoverStart={() => onHoverAnime(anime)}
-                onHoverEnd={() => onHoverAnime(null)}
+                // Conectamos los eventos de hover
+                onHoverStart={() => onHoverStart(anime)}
+                onHoverEnd={onHoverEnd}
             />
           ))}
           
-          {/* Placeholder fantasma cuando está vacío y arrastras algo encima */}
           {items.length === 0 && isOver && (
             <div className="w-20 h-28 rounded-lg border-2 border-dashed border-white/20 flex items-center justify-center animate-pulse">
                 <span className="text-xs text-white/30">Drop here</span>
