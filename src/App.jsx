@@ -6,21 +6,22 @@ import {
   closestCenter, 
   useSensor, 
   useSensors, 
-  PointerSensor,
-  useDroppable 
+  PointerSensor
 } from '@dnd-kit/core';
-import { SortableContext, horizontalListSortingStrategy, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
+import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 import { toPng } from 'html-to-image';
 
+// --- COMPONENTES ---
+import { Header } from './components/Header'; // <--- NUEVO
+import { Footer } from './components/Footer'; // <--- NUEVO
+import { BankDroppable } from './components/BankDroppable';
 import { AnimeSearch } from './components/AnimeSearch';
 import { TierRow } from './components/TierRow';
-import { DraggableAnime } from './components/DraggableAnime';
 import { CinematicPreview } from './components/CinematicPreview';
 import { AnimeCard } from './components/AnimeCard';
 import { ConfirmationModal } from './components/ConfirmationModal';
-import { LogoIcon } from './components/LogoIcon.jsx';
 
-// --- CONFIGURACIÓN ESTÁTICA (No necesita estar dentro del componente) ---
+// --- CONFIGURACIÓN ESTÁTICA ---
 const INITIAL_ROWS = [
   { id: 'S', label: 'S', color: 'from-yellow-300 via-amber-400 to-yellow-500' },
   { id: 'A', label: 'A', color: 'from-red-500 to-rose-600' },
@@ -37,57 +38,13 @@ const COLOR_POOL = [
   'from-indigo-400 to-violet-600',
 ];
 
-// Detección de colisión optimizada para listas mixtas
 function customCollisionDetection(args) {
     if (args.active.data.current?.type === 'Row') return closestCenter(args);
     return pointerWithin(args);
 }
 
-// --- SUB-COMPONENTES (Para mantener el archivo limpio) ---
-const BankDroppable = ({ items, onRemove, onHoverStart, onHoverEnd }) => {
-  const { setNodeRef } = useDroppable({ id: 'bank' });
-  const ids = useMemo(() => items.map(i => i.mal_id), [items]);
-
-  return (
-    <SortableContext items={ids} id="bank" strategy={horizontalListSortingStrategy}>
-      <div 
-        ref={setNodeRef}
-        className="flex flex-row flex-wrap content-start gap-4 p-4 w-full h-full overflow-y-auto custom-scrollbar bg-gray-900/50 rounded-xl border border-gray-700/50 shadow-inner"
-      >
-        {items.length === 0 && (
-            <div className="flex flex-col items-center justify-center text-gray-500 opacity-40 w-full h-full gap-3 pointer-events-none">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" /></svg>
-                <p className="text-sm font-bold uppercase tracking-widest text-center">Colección vacía</p>
-            </div>
-        )}
-        {items.map((anime) => (
-          <div key={anime.mal_id} className="flex-shrink-0">
-            <DraggableAnime id={anime.mal_id} anime={anime} onRemove={onRemove} onHoverStart={() => onHoverStart(anime)} onHoverEnd={onHoverEnd} />
-          </div>
-        ))}
-      </div>
-    </SortableContext>
-  );
-};
-
-const ActionButton = ({ onClick, icon, tooltip, danger = false, hideOnExport = false }) => (
-    <button 
-        onClick={onClick}
-        data-hide-on-export={hideOnExport}
-        className={`group relative p-2 rounded-lg transition-all ${danger ? 'hover:bg-red-500/20 text-red-400 hover:text-red-300' : 'hover:bg-gray-700 text-gray-400 hover:text-white'}`}
-        title={tooltip} // Fallback nativo
-    >
-        {icon}
-        {/* Tooltip personalizado */}
-        <span className="absolute top-full right-0 mt-2 px-2 py-1 bg-black text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 border border-gray-700 hidden md:block">
-          {tooltip}
-        </span>
-    </button>
-);
-
-// --- COMPONENTE PRINCIPAL ---
+// --- APP PRINCIPAL ---
 function App() {
-  // ESTADOS
   const [tierTitle, setTierTitle] = useState(() => localStorage.getItem('tierTitle') || "MI TIER LIST DE ANIME");
   const [rows, setRows] = useState(() => JSON.parse(localStorage.getItem('tierRows')) || INITIAL_ROWS);
   const [items, setItems] = useState(() => {
@@ -104,29 +61,23 @@ function App() {
   const [previewAnime, setPreviewAnime] = useState(null);
   const [confirmation, setConfirmation] = useState({ isOpen: false, type: null, data: null, title: "", message: "" }); 
 
-  // REFS
   const tierListRef = useRef(null);
   const footerRef = useRef(null);
   const containerRef = useRef(null);
   const previewTimeoutRef = useRef(null);
 
-  // SENSORS
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
-  // PERSISTENCIA
   useEffect(() => {
     localStorage.setItem('tierRows', JSON.stringify(rows));
     localStorage.setItem('tierItems', JSON.stringify(items));
     localStorage.setItem('tierTitle', tierTitle);
   }, [rows, items, tierTitle]);
 
-  // MEMOIZACIÓN (OPTIMIZACIÓN CLAVE)
-  // Calcula los IDs existentes solo cuando cambian los items, no en cada render.
   const existingAnimeIds = useMemo(() => {
     return new Set(Object.values(items).flat().map(i => i.mal_id));
   }, [items]);
 
-  // Calcula estadísticas solo cuando es necesario
   const { allRankedCount, bankCount, totalCount } = useMemo(() => {
     const ranked = Object.entries(items).filter(([key]) => key !== 'bank').reduce((sum, [, list]) => sum + list.length, 0);
     const bank = items.bank.length;
@@ -139,8 +90,6 @@ function App() {
   }, [activeItem, draggedSearchResult, activeId, items]);
 
   // --- HANDLERS LÓGICOS ---
-  
-  // 1. RESIZE OPTIMIZADO Y LIMITADO
   const handleMouseDownResize = useCallback((e) => {
     e.preventDefault();
     const container = containerRef.current;
@@ -148,19 +97,16 @@ function App() {
 
     const startY = e.clientY;
     const startHeight = container.getBoundingClientRect().height;
-    // Límite máximo: 85% de la ventana para evitar scroll infinito
     const maxHeight = window.innerHeight * 0.85; 
 
     const onMouseMove = (moveEvent) => {
       const delta = moveEvent.clientY - startY;
       let newHeight = startHeight + delta;
-
-      // Restricciones: Mínimo 400px, Máximo 85% pantalla
       if (newHeight < 400) newHeight = 400;
       if (newHeight > maxHeight) newHeight = maxHeight;
 
       container.style.height = `${newHeight}px`;
-      container.style.flex = 'none'; // Desactiva el auto-growth al redimensionar manualmente
+      container.style.flex = 'none';
     };
 
     const onMouseUp = () => {
@@ -191,7 +137,6 @@ function App() {
     });
   };
 
-  // Acciones del Modal
   const requestResetBoard = () => setConfirmation({
     isOpen: true, type: 'RESET', title: "⚠️ ¿REINICIAR TODO?", message: "Se borrará todo. ¡No hay vuelta atrás!", data: null
   });
@@ -228,7 +173,6 @@ function App() {
     setItems(prev => ({ ...prev, [newId]: [] }));
   };
 
-  // Exportar Imagen
   const handleDownloadImage = async () => {
     if (!tierListRef.current) return;
     try {
@@ -277,7 +221,6 @@ function App() {
     setDraggedSearchResult(null); setActiveId(null); setActiveItem(null);
     if (!over) return;
 
-    // A. Reordenar Filas
     if (active.data.current?.type === 'Row') {
         if (active.id !== over.id) {
             setRows(r => {
@@ -289,14 +232,12 @@ function App() {
         return;
     }
 
-    // B. Mover Animes
     const findContainer = (id) => (id in items) ? id : Object.keys(items).find(key => items[key].some(i => i.mal_id === id));
     const activeContainer = active.data.current?.fromSearch ? null : findContainer(active.id);
     const overContainer = findContainer(over.id) || over.id;
 
     if (!overContainer) return;
 
-    // Caso 1: Soltar desde el buscador
     if (active.data.current?.fromSearch) {
         if (items[overContainer] && !existingAnimeIds.has(active.data.current.anime.mal_id)) {
             setItems(prev => ({ ...prev, [overContainer]: [...prev[overContainer], active.data.current.anime] }));
@@ -304,7 +245,6 @@ function App() {
         return;
     }
 
-    // Caso 2: Mover entre contenedores existentes
     if (activeContainer && overContainer && (activeContainer !== overContainer || active.id !== over.id)) {
         setItems(prev => {
             const activeList = prev[activeContainer];
@@ -340,27 +280,15 @@ function App() {
 
         <ConfirmationModal isOpen={confirmation.isOpen} onClose={() => setConfirmation(c => ({...c, isOpen: false}))} onConfirm={handleConfirmAction} title={confirmation.title} message={confirmation.message} />
 
-        <header className="bg-[#111827]/80 backdrop-blur-md sticky top-0 z-40 border-b border-gray-800">
-          <div className="max-w-[1600px] mx-auto px-6 py-4 flex justify-between items-center">
-              <div className="flex items-center gap-3">
-                <LogoIcon className="w-10 h-10 shadow-xl text-blue-500" />
-                <h1 className="text-2xl font-bold tracking-tight text-gray-100 hidden sm:block font-['Outfit']">
-                    Anime<span className="text-blue-500">Tier</span>Maker
-                </h1>
-              </div>
-
-              <div className="flex items-center gap-2 bg-gray-800/50 p-1.5 rounded-xl border border-gray-700/50">
-                 <ActionButton onClick={addNewRow} tooltip="Añadir Tier" hideOnExport={true} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" /></svg>} />
-                 <div className="w-px h-6 bg-gray-700 mx-1"></div>
-                 <ActionButton onClick={requestResetBoard} danger={true} tooltip="Reset Total" hideOnExport={true} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" /></svg>} />
-                 <ActionButton onClick={handleDownloadImage} tooltip="Exportar Imagen" icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" /></svg>} />
-              </div>
-          </div>
-        </header>
+        {/* HEADER LIMPIO */}
+        <Header 
+          onAddRow={addNewRow} 
+          onReset={requestResetBoard} 
+          onExport={handleDownloadImage} 
+        />
 
         <main className="flex-1 max-w-[1400px] w-full mx-auto px-4 py-8 flex flex-col gap-6 relative z-10">
           
-          {/* --- TIER LIST (RESIZEABLE) --- */}
           <div 
             ref={containerRef}
             className="bg-gray-800/40 backdrop-blur-sm rounded-2xl border border-gray-700/50 shadow-2xl flex flex-col relative group transition-colors duration-300 hover:border-gray-600"
@@ -381,11 +309,12 @@ function App() {
                             <TierRow key={row.id} row={row} items={items[row.id]} onRename={handleRenameRow} onColorChange={handleColorChange} onRemoveAnime={handleRemoveItem} onDeleteTier={requestDeleteTier} onHoverStart={handleHoverStart} onHoverEnd={handleHoverEnd} />
                         ))}
                       </SortableContext>
+                      
+                      {/* Footer interno oculto solo para exportación */}
                       <div ref={footerRef} className="hidden pt-4 mt-2 border-t border-gray-800 text-center bg-[#1a1d26]"><p className="text-gray-500 text-sm font-bold uppercase tracking-widest">Creado en <span className="text-blue-500">AnimeTierMaker</span></p></div>
                   </div>
               </div>
 
-              {/* HANDLE DE RESIZE (Ahora con límite) */}
               <div 
                 onMouseDown={handleMouseDownResize}
                 className="h-6 w-full cursor-row-resize flex items-center justify-center bg-gray-900/50 hover:bg-blue-600/20 border-t border-gray-700/50 rounded-b-2xl transition-colors group-hover:border-blue-500/30"
@@ -407,17 +336,8 @@ function App() {
           </div>
         </main>
 
-        <footer className="border-t border-gray-800/50 py-8 mt-auto bg-[#111827]/80 backdrop-blur-md relative z-10">
-          <div className="max-w-[1600px] mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-gray-400">
-            <div className="flex items-center gap-2">
-              <span>&copy; {new Date().getFullYear()} AnimeTierMaker.</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-gray-500">Dev</span>
-              <span className="font-mono text-blue-400">GermanLaste</span>
-            </div>
-          </div>
-        </footer>        
+        {/* FOOTER ANIMADO Y DECORADO */}
+        <Footer />
         
         <DragOverlay dropAnimation={{ duration: 250, easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)' }}>
             {activeItem?.type === 'Anime' && activeAnimeData ? (<div className="cursor-grabbing pointer-events-none"><AnimeCard anime={activeAnimeData} isOverlay={true} /></div>) : null}
