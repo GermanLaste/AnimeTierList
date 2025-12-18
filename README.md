@@ -1,100 +1,111 @@
-<div align="center">
-  <img src="public/banner-placeholder.png" alt="Anime Tier List Maker Banner" width="100%" />
+# 🎌 Anime Tier List Maker
 
-  <br />
+![Project Status](https://img.shields.io/badge/status-active-success)
+![React](https://img.shields.io/badge/React-v19-blue)
+![Tailwind](https://img.shields.io/badge/Tailwind_CSS-v4-38bdf8)
+![License](https://img.shields.io/badge/license-MIT-green)
 
-  # ⛩️ Anime Tier List Maker
-  
-  **Create, Rank, and Share your ultimate Anime Tier Lists with style.**
-  
-  <p align="center">
-    <a href="https://reactjs.org/">
-      <img src="https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" alt="React" />
-    </a>
-    <a href="https://vitejs.dev/">
-      <img src="https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white" alt="Vite" />
-    </a>
-    <a href="https://tailwindcss.com/">
-      <img src="https://img.shields.io/badge/Tailwind_CSS_v4-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind CSS" />
-    </a>
-    <a href="https://dndkit.com/">
-      <img src="https://img.shields.io/badge/dnd--kit-DnD-orange?style=for-the-badge" alt="Dnd Kit" />
-    </a>
-  </p>
+A modern, highly interactive web application designed for anime enthusiasts to rank and organize their favorite series. Built with the latest frontend technologies, it features a fluid drag-and-drop experience, real-time API integration, and a "cinematic" aesthetic.
 
-  <p align="center">
-    🚀 <a href="LINK_DE_TU_DEPLOY_SI_TIENES">View Live Demo</a> • 🐛 <a href="issues">Report Bug</a>
-  </p>
-</div>
+**[Live Demo](#) · [Report Bug](#) · [Request Feature](#)**
 
 ---
 
-## ⚡ Overview
-
-**Anime Tier List Maker** is a modern, high-performance web application designed for anime enthusiasts. Unlike standard tier makers, this project focuses on **User Experience (UX)** and **Aesthetic**, featuring a "Glassmorphism" design, smooth animations, and a sophisticated Drag & Drop system.
-
-Powered by the **Jikan API** (MyAnimeList), users can search for any anime instantly, drag it into custom tiers, and export a high-quality image to share on social media.
-
 ## ✨ Key Features
 
-### 🎮 Advanced Drag & Drop System
-Implemented a **Hybrid Collision Detection** strategy using `@dnd-kit`:
-- **For Animes:** Uses `pointerWithin` algorithm for precise placement into small drop zones.
-- **For Rows:** Uses `closestCenter` algorithm for smooth vertical reordering of the tiers themselves.
-- **Result:** A conflict-free experience where you can sort animes *and* reorder tiers simultaneously.
+This isn't just a static grid; it's a fully reactive application focused on UX/UI details.
 
-### 🎨 "Premium" UI/UX
-- **Aurora Borealis Background:** Custom CSS-only animated background.
-- **Glassmorphism:** Translucent panels with backdrop blur.
-- **Cinematic Preview:** Hovering over an anime reveals a high-res cover art in a cinematic overlay.
-- **Interactive Tiers:** Rename tiers and change their colors using a custom popover palette with live preview.
+* **⚡ Modern Tech Stack:** Built on **React 19** and **Vite**, utilizing the bleeding-edge **Tailwind CSS v4** for styling.
+* **🖐️ Advanced Drag & Drop:** Powered by **@dnd-kit**, supporting a hybrid sorting strategy. You can drag animes between tiers, reorder them within rows, and even **reorder the Tier Rows themselves**.
+* **🔍 Live Search with Debounce:** Integrated with the **Jikan API (MyAnimeList)**. Includes a custom 500ms debounce hook to optimize API calls and prevent rate limiting while typing.
+* **🎬 Cinematic Preview:** A dedicated "Glassmorphism" UI component that reveals high-res artwork and metadata (Score, Year, Synopsis) when hovering over an anime, powered by **Framer Motion** for smooth entrance/exit animations.
+* **💾 Smart Persistence:** Your progress (rows, colors, and ranked items) is automatically saved to `localStorage`, so you never lose your list on refresh.
+* **📸 Clean Export:** One-click export to PNG using `html-to-image`. The export engine intelligently filters out UI controls (buttons, trash cans) using custom data attributes (`data-hide-on-export`) to generate a clean, shareable image.
 
-### 🛠️ Utilities
-- **Live Search:** Real-time debounced search connected to Jikan API v4.
-- **Smart Persistence:** Never lose progress. State is automatically saved to `localStorage`.
-- **Clean Export:** Generates a marketing-ready PNG using `html-to-image`.
-  - *Magic Feature:* Automatically hides UI elements (delete buttons, settings) and injects a watermark footer only during the capture process.
+---
 
-## 📸 Screenshots
+## 🛠️ Technical Stack
 
-| Dashboard & Stats | Custom Color Picker |
-|:---:|:---:|
-| <img src="URL_DE_TU_IMAGEN_1.png" width="400" /> | <img src="URL_DE_TU_IMAGEN_2.png" width="400" /> |
+I chose this stack to maximize performance and developer experience, leveraging the newest versions of key libraries.
 
-| Drag & Drop Action | Exported Image |
-|:---:|:---:|
-| <img src="URL_DE_TU_IMAGEN_3.png" width="400" /> | <img src="URL_DE_TU_IMAGEN_4.png" width="400" /> |
+| Category | Technology | Usage |
+| :--- | :--- | :--- |
+| **Core** | React 19 + Vite | Fast HMR and latest React concurrent features. |
+| **Styling** | Tailwind CSS v4 | Zero-runtime styling with the new `@tailwindcss/vite` plugin. |
+| **DnD** | @dnd-kit (Core/Sortable) | Accessible, modular drag-and-drop primitives. |
+| **Motion** | Framer Motion | Complex layout animations and micro-interactions. |
+| **Data** | Jikan API v4 | Asynchronous data fetching for anime metadata. |
+| **Utils** | html-to-image | DOM-to-Canvas generation for exporting results. |
 
-## 🔧 Tech Stack
+---
 
-- **Core:** React 18 + Vite
-- **Styling:** Tailwind CSS **v4** (Native CSS configuration) + Fonts (Outfit)
-- **State & Logic:** Custom Hooks + LocalStorage
-- **Drag & Drop:** `@dnd-kit/core`, `@dnd-kit/sortable`
-- **Animation:** Framer Motion (Spring animations)
-- **Imaging:** `html-to-image` (OKLCH color support)
+## 🚀 Getting Started
 
-## 🤝 Contributing
-Contributions are welcome! Please feel free to submit a Pull Request.
+To run this project locally, follow these steps:
 
-## 📄 License
-This project is open source and available under the MIT License.
+### Prerequisites
+* Node.js (v18 or higher recommended)
+* npm or yarn
 
-<div align="center"> Created with ❤️ by <b>[GermanLaste]</b> </div>
+### Installation
 
-## 🚀 Installation
+1.  **Clone the repository**
+    ```bash
+    git clone [https://github.com/yourusername/anime-tier-list.git](https://github.com/yourusername/anime-tier-list.git)
+    cd anime-tier-list
+    ```
 
-Clone the project and install dependencies:
+2.  **Install dependencies**
+    ```bash
+    npm install
+    ```
 
-```bash
-# Clone the repo
-git clone [https://github.com/TU_USUARIO/anime-tier-list.git](https://github.com/TU_USUARIO/anime-tier-list.git)
+3.  **Start the development server**
+    ```bash
+    npm run dev
+    ```
 
-# Enter the directory
-cd anime-tier-list
+4.  Open `http://localhost:5173` in your browser.
 
-# Install dependencies
-npm install
+---
 
-# Run development server
-npm run dev
+## 🎨 Project Structure
+
+A quick look at the component architecture:
+
+```text
+src/
+├── components/
+│   ├── AnimeCard.jsx        # Individual card component
+│   ├── AnimeSearch.jsx      # Live search with Debounce & Draggable results
+│   ├── CinematicPreview.jsx # Hover overlay with Framer Motion
+│   ├── DraggableAnime.jsx   # Wrapper for Sortable DnD items
+│   ├── TierRow.jsx          # Sortable Row container
+│   └── ...
+├── App.jsx                  # Main logic (State, Context, Handlers)
+└── index.css                # Global styles & Tailwind directives
+🤝 Contributing
+Contributions are what make the open-source community such an amazing place to learn, inspire, and create. Any contributions you make are greatly appreciated.
+
+Fork the Project
+
+Create your Feature Branch (git checkout -b feature/AmazingFeature)
+
+Commit your Changes (git commit -m 'Add some AmazingFeature')
+
+Push to the Branch (git push origin feature/AmazingFeature)
+
+Open a Pull Request
+
+📄 License
+Distributed under the MIT License. See LICENSE for more information.
+
+<p align="center"> Built with ❤️ and ☕ by <a href="https://www.google.com/search?q=https://github.com/germanlaste">GermanLaste</a> </p>
+
+
+### 📝 Instrucciones rápidas:
+
+1.  Crea un archivo llamado `README.md` en la raíz de tu proyecto (al lado de `package.json`).
+2.  Pega el código de arriba.
+3.  Guardalo.
+4.  Cuando lo subas a GitHub, ¡se verá con los títulos grandes, las tablas y los badges de colores\!

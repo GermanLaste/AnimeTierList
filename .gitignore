@@ -35,3 +35,18 @@ dist-ssr
 Thumbs.db
 ehthumbs.db
 Desktop.ini
+
+# Cache de ESLint (te ahorra subir archivos de checkeo)
+.eslintcache
+
+# Directorios de coverage (si haces tests en el futuro)
+coverage/
+.nyc_output/
+
+# Ignorar para compartir con IA (Opcional, pero ahorra tokens)
+package-lock.json
+yarn.lock
+*.svg
+*.png
+*.jpg
+*.ico
