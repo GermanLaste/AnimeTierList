@@ -84,6 +84,7 @@ src/
 │   └── ...
 ├── App.jsx                  # Main logic (State, Context, Handlers)
 └── index.css                # Global styles & Tailwind directives
+ ```
 🤝 Contributing
 Contributions are what make the open-source community such an amazing place to learn, inspire, and create. Any contributions you make are greatly appreciated.
 
@@ -101,11 +102,3 @@ Open a Pull Request
 Distributed under the MIT License. See LICENSE for more information.
 
 <p align="center"> Built with ❤️ and ☕ by <a href="https://www.google.com/search?q=https://github.com/germanlaste">GermanLaste</a> </p>
-
-
-### 📝 Instrucciones rápidas:
-
-1.  Crea un archivo llamado `README.md` en la raíz de tu proyecto (al lado de `package.json`).
-2.  Pega el código de arriba.
-3.  Guardalo.
-4.  Cuando lo subas a GitHub, ¡se verá con los títulos grandes, las tablas y los badges de colores\!
