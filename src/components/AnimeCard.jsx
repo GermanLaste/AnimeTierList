@@ -2,13 +2,13 @@ import { motion } from 'framer-motion';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
-export function AnimeCard({ anime, isOverlay = false, onClick, onRemove, onHoverStart, onHoverEnd }) {
+export function AnimeCard({ anime, isOverlay = false, onClick, onRemove, onHoverStart, onHoverEnd, showLinkIcon = false }) {
   const springConfig = { type: "spring", stiffness: 300, damping: 20 };
 
   return (
     <motion.div
       layoutId={isOverlay ? `anime-${anime.mal_id}` : undefined}
-      className="relative group w-24 h-36 perspective-500" // Tamaño fijo importante para el grid horizontal
+      className="relative group w-24 h-36 perspective-500 cursor-pointer" // cursor-pointer para indicar click
       initial={isOverlay ? { scale: 1.05, rotate: -2 } : { scale: 1 }}
       whileHover={isOverlay ? {} : { scale: 1.08, y: -5, zIndex: 50 }}
       transition={springConfig}
@@ -32,11 +32,12 @@ export function AnimeCard({ anime, isOverlay = false, onClick, onRemove, onHover
         transition={{ repeat: Infinity, duration: 4, ease: "easeInOut", delay: Math.random() * 2 }}
       >
         <img 
-          src={anime.images.jpg.image_url} 
-          alt={anime.title} 
-          className="w-full h-full object-cover will-change-transform"
-          draggable={false}
-        />
+    src={anime.images.jpg.image_url} 
+    alt={anime.title} 
+    className="w-full h-full object-cover will-change-transform" 
+    draggable={false} 
+    crossOrigin="anonymous"  // <--- AGREGA ESTO: Vital para html2canvas
+/>
 
         <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/90 via-black/40 to-transparent opacity-60 group-hover:opacity-100 transition-opacity duration-300" />
         
@@ -46,17 +47,25 @@ export function AnimeCard({ anime, isOverlay = false, onClick, onRemove, onHover
             </p>
         </div>
 
-        {/* BOTÓN ELIMINAR (MEJORADO) */}
+        {/* ICONO DE LINK EXTERNO (Esquina superior IZQUIERDA) */}
+        {!isOverlay && showLinkIcon && (
+             <div className="absolute top-1 left-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                <div className="bg-black/50 backdrop-blur-sm p-1 rounded-full text-white/80 hover:text-white border border-white/20">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                </div>
+             </div>
+        )}
+
+        {/* BOTÓN ELIMINAR (Esquina superior DERECHA) */}
         {!isOverlay && onRemove && (
             <div 
+               data-html2canvas-ignore="true"
                 className="absolute -top-2 -right-2 p-2 opacity-0 group-hover:opacity-100 transition-opacity z-50 cursor-pointer"
-                onPointerDown={(e) => {
-                    e.stopPropagation();
-                    // Importante: No disparamos drag
-                }}
+                onPointerDown={(e) => e.stopPropagation()} // Vital para no activar el Drag
                 onClick={(e) => { 
                     e.stopPropagation(); 
-                    console.log("Eliminando:", anime.mal_id); // Debug
                     onRemove(anime.mal_id); 
                 }}
             >
