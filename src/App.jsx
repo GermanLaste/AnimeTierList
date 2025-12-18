@@ -20,7 +20,8 @@ import { TierRow } from './components/TierRow';
 import { CinematicPreview } from './components/CinematicPreview';
 import { AnimeCard } from './components/AnimeCard';
 import { ConfirmationModal } from './components/ConfirmationModal';
-
+import { SakuraBackground } from './components/SakuraBackground';
+import { TokyoCity } from './components/TokyoCity';
 // --- CONFIGURACIÓN ESTÁTICA ---
 const INITIAL_ROWS = [
   { id: 'S', label: 'S', color: 'from-yellow-300 via-amber-400 to-yellow-500' },
@@ -269,15 +270,15 @@ function App() {
 
   return (
     <DndContext sensors={sensors} collisionDetection={customCollisionDetection} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-      <div className="min-h-screen bg-[#0b0f19] text-white flex flex-col font-sans selection:bg-blue-500/30 overflow-x-hidden relative">
-        
+<div className="min-h-screen bg-[#110518] text-white flex flex-col font-sans selection:bg-pink-500/30 overflow-x-hidden relative">        
         {/* FONDO ANIMADO */}
         <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
              <div className="absolute top-[-10%] left-[-10%] w-[40vw] h-[40vw] rounded-full bg-blue-600/20 blur-[100px] animate-pulse"></div>
              <div className="absolute bottom-[-10%] right-[-10%] w-[40vw] h-[40vw] rounded-full bg-purple-600/20 blur-[100px] animate-pulse delay-1000"></div>
              <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-[0.03]"></div>
         </div>
-
+        <TokyoCity />
+<SakuraBackground />
         <ConfirmationModal isOpen={confirmation.isOpen} onClose={() => setConfirmation(c => ({...c, isOpen: false}))} onConfirm={handleConfirmAction} title={confirmation.title} message={confirmation.message} />
 
         {/* HEADER LIMPIO */}
@@ -296,8 +297,13 @@ function App() {
           >
               <div className="flex-1 overflow-auto custom-scrollbar p-6 pb-2">
                   <div ref={tierListRef} className="flex flex-col gap-2 bg-[#1a1d26] p-4 rounded-xl shadow-inner">
-                      <input value={tierTitle} onChange={(e) => setTierTitle(e.target.value)} className="w-full bg-transparent text-center text-3xl md:text-5xl font-black text-white p-4 mb-2 outline-none border-b-2 border-transparent hover:border-gray-700 focus:border-blue-500 transition-colors uppercase placeholder-gray-600" placeholder="ESCRIBE UN TÍTULO..." maxLength={40} />
-
+<input 
+  value={tierTitle} 
+  onChange={(e) => setTierTitle(e.target.value)} 
+  className="w-full bg-transparent text-center text-3xl md:text-5xl font-russo p-4 mb-2 outline-none border-b-2 border-transparent hover:border-gray-700 focus:border-blue-500 transition-all uppercase tracking-wider bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 bg-clip-text text-transparent caret-white placeholder-gray-700" 
+  placeholder="ESCRIBE UN TÍTULO..." 
+  maxLength={40} 
+/>
                       <div className="grid grid-cols-3 gap-4 mb-6 px-4 md:px-12" data-hide-on-export="true">
                           <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-2 flex flex-col items-center justify-center"><span className="text-xl md:text-2xl font-black text-blue-400">{totalCount}</span><span className="text-[10px] md:text-xs text-blue-300/70 uppercase tracking-wider font-bold">Total</span></div>
                           <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-2 flex flex-col items-center justify-center"><span className="text-xl md:text-2xl font-black text-green-400">{allRankedCount}</span><span className="text-[10px] md:text-xs text-green-300/70 uppercase tracking-wider font-bold">Ranked</span></div>
