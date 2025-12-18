@@ -1,17 +1,15 @@
-import { useState, useRef, useEffect } from 'react'; // <--- useEffect es necesario para guardar
+import { useState, useRef, useEffect } from 'react';
 import { 
   DndContext, 
   DragOverlay, 
-  rectIntersection, 
-  useDroppable, 
+  closestCenter, // Usaremos esto para mejor detección al mover filas
   useSensor, 
   useSensors, 
   PointerSensor 
 } from '@dnd-kit/core';
-import { SortableContext, horizontalListSortingStrategy, arrayMove } from '@dnd-kit/sortable'; // <--- Ojo: agregué arrayMove que faltaba importar
+import { SortableContext, horizontalListSortingStrategy, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 import { toPng } from 'html-to-image';
 
-// --- IMPORTACIÓN DE COMPONENTES ---
 import { AnimeSearch } from './components/AnimeSearch';
 import { TierRow } from './components/TierRow';
 import { DraggableAnime } from './components/DraggableAnime';
@@ -19,152 +17,107 @@ import { CinematicPreview } from './components/CinematicPreview';
 import { AnimeCard } from './components/AnimeCard';
 import { ConfirmationModal } from './components/ConfirmationModal';
 
-// --- CONSTANTES GLOBALES (Configuración inicial) ---
+// --- COLORES ---
 const INITIAL_ROWS = [
-  { id: 'S', label: 'S', color: 'bg-red-500' },
-  { id: 'A', label: 'A', color: 'bg-orange-500' },
-  { id: 'B', label: 'B', color: 'bg-yellow-500' },
-  { id: 'C', label: 'C', color: 'bg-lime-500' },
-  { id: 'D', label: 'D', color: 'bg-green-500' },
+  { id: 'S', label: 'S', color: 'from-yellow-300 via-amber-400 to-yellow-500' },
+  { id: 'A', label: 'A', color: 'from-red-500 to-rose-600' },
+  { id: 'B', label: 'B', color: 'from-orange-400 to-orange-600' },
+  { id: 'C', label: 'C', color: 'from-emerald-400 to-teal-600' },
+  { id: 'D', label: 'D', color: 'from-gray-400 to-gray-600' },
 ];
 
 const COLOR_POOL = [
-  'bg-purple-500', 'bg-pink-500', 'bg-indigo-500', 
-  'bg-teal-500', 'bg-cyan-500', 'bg-rose-500', 
-  'bg-emerald-500', 'bg-amber-500', 'bg-fuchsia-500'
+  'from-purple-500 to-indigo-600',
+  'from-cyan-400 to-blue-500',
+  'from-pink-500 to-fuchsia-600',
+  'from-lime-400 to-green-500',
+  'from-indigo-400 to-violet-600',
 ];
 
-// --- SUB-COMPONENTE: BANCO DE IMÁGENES (Zona inferior) ---
 function BankDroppable({ items, onRemove, onHoverStart, onHoverEnd }) {
-  const { setNodeRef } = useDroppable({ id: 'bank' });
-  
+  // El banco NO es sortable verticalmente, solo contiene items
   return (
     <SortableContext items={items.map(i => i.mal_id)} id="bank" strategy={horizontalListSortingStrategy}>
-      <div 
-        ref={setNodeRef} 
-        className="flex flex-row flex-wrap content-start gap-4 p-4 w-full h-full overflow-y-auto custom-scrollbar bg-gray-900/50 rounded-xl border border-gray-700/50 shadow-inner"
-      >
-        {items.length === 0 && (
-            <div className="flex flex-col items-center justify-center text-gray-500 opacity-50 w-full h-full">
-                <p className="text-sm font-bold uppercase tracking-widest">Colección vacía</p>
-            </div>
-        )}
-        
-        {items.map((anime) => (
-          <div key={anime.mal_id} className="flex-shrink-0"> 
-             <DraggableAnime 
-                id={anime.mal_id} 
-                anime={anime} 
-                onRemove={onRemove}
-                onHoverStart={() => onHoverStart(anime)} 
-                onHoverEnd={onHoverEnd}
-             />
-          </div>
-        ))}
+      <div className="flex flex-row flex-wrap content-start gap-4 p-4 w-full h-full overflow-y-auto custom-scrollbar bg-gray-900/50 rounded-xl border border-gray-700/50 shadow-inner">
+        {items.length === 0 && (<div className="flex flex-col items-center justify-center text-gray-500 opacity-50 w-full h-full"><p className="text-sm font-bold uppercase tracking-widest">Colección vacía</p></div>)}
+        {items.map((anime) => (<div key={anime.mal_id} className="flex-shrink-0"><DraggableAnime id={anime.mal_id} anime={anime} onRemove={onRemove} onHoverStart={() => onHoverStart(anime)} onHoverEnd={onHoverEnd} /></div>))}
       </div>
     </SortableContext>
   );
 }
 
-// --- SUB-COMPONENTE: BOTÓN DE ACCIÓN (Toolbar superior) ---
-function ActionButton({ onClick, icon, tooltip, danger = false }) {
+function ActionButton({ onClick, icon, tooltip, danger = false, hideOnExport = false }) {
     return (
         <button 
             onClick={onClick}
-            // data-html2canvas-ignore le dice a la captura que NO incluya este botón
-            data-html2canvas-ignore="true" 
-            className={`group relative p-2 rounded-lg transition-all ${
-                danger 
-                ? 'hover:bg-red-500/20 text-red-400 hover:text-red-300' 
-                : 'hover:bg-gray-700 text-gray-400 hover:text-white'
-            }`}
+            {...(hideOnExport ? { 'data-hide-on-export': "true" } : {})}
+            className={`group relative p-2 rounded-lg transition-all ${danger ? 'hover:bg-red-500/20 text-red-400 hover:text-red-300' : 'hover:bg-gray-700 text-gray-400 hover:text-white'}`}
         >
             {icon}
-            <span className="absolute top-full right-0 mt-2 px-2 py-1 bg-black text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 border border-gray-700">
-                {tooltip}
-            </span>
+            <span className="absolute top-full right-0 mt-2 px-2 py-1 bg-black text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 border border-gray-700">{tooltip}</span>
         </button>
     );
 }
 
-// =================================================================
-// === COMPONENTE PRINCIPAL (APP) ==================================
-// =================================================================
 function App() {
-
-  // --- ESTADOS (La memoria de la App) ---
+  const [tierTitle, setTierTitle] = useState(() => localStorage.getItem('tierTitle') || "MI TIER LIST DE ANIME");
   
-  // 1. Título de la Tier List (con carga desde LocalStorage)
-  const [tierTitle, setTierTitle] = useState(() => {
-    // Intentamos leer 'tierTitle' del navegador, si no existe, usamos el default
-    return localStorage.getItem('tierTitle') || "MI TIER LIST DE ANIME";
-  });
-
-  // 2. Filas/Tiers (S, A, B...) (con carga desde LocalStorage)
   const [rows, setRows] = useState(() => {
     const saved = localStorage.getItem('tierRows');
-    // Si hay datos guardados, los convertimos de texto a objeto (JSON.parse), si no, usamos INITIAL_ROWS
     return saved ? JSON.parse(saved) : INITIAL_ROWS;
   });
 
-  // 3. Items/Animes (Dónde está cada anime) (con carga desde LocalStorage)
   const [items, setItems] = useState(() => {
     const saved = localStorage.getItem('tierItems');
     if (saved) return JSON.parse(saved);
-    
-    // Si no hay nada guardado, creamos la estructura vacía
     const initialState = { bank: [] };
     INITIAL_ROWS.forEach(row => initialState[row.id] = []);
     return initialState;
   });
+
+  const [activeId, setActiveId] = useState(null);
+  const [activeItem, setActiveItem] = useState(null); // Para saber QUÉ estamos arrastrando (Anime o Row)
+  const [draggedSearchResult, setDraggedSearchResult] = useState(null);
+  const [previewAnime, setPreviewAnime] = useState(null);
+  const [deleteModal, setDeleteModal] = useState({ isOpen: false, tierId: null });
   
-  // 4. Estados de UI (Interfaz de usuario)
-  const [activeId, setActiveId] = useState(null); // ID del anime que se está arrastrando
-  const [draggedSearchResult, setDraggedSearchResult] = useState(null); // Datos del anime arrastrado desde el buscador
-  const [previewAnime, setPreviewAnime] = useState(null); // Anime que se muestra en la preview grande
-  const [deleteModal, setDeleteModal] = useState({ isOpen: false, tierId: null }); // Controla si el modal de borrar tier está abierto
-
-  // --- FIN DE ESTADOS ---
-
-  // --- REFERENCIAS (Apuntadores a elementos del DOM o valores que no renderizan) ---
- const tierListRef = useRef(null); // El contenedor principal a capturar
-  const footerRef = useRef(null);   // NUEVO: Referencia para el texto de crédito oculto
+  const tierListRef = useRef(null);
+  const footerRef = useRef(null);
   const previewTimeoutRef = useRef(null);
-  // --- FIN DE REFERENCIAS ---
 
-  // --- EFECTOS (Acciones automáticas) ---
-  
-  // EFECTO DE GUARDADO AUTOMÁTICO
-  // Se ejecuta cada vez que cambian [rows, items, tierTitle]
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
+  const existingAnimeIds = new Set(Object.values(items).flat().map(i => i.mal_id));
+
   useEffect(() => {
     localStorage.setItem('tierRows', JSON.stringify(rows));
     localStorage.setItem('tierItems', JSON.stringify(items));
     localStorage.setItem('tierTitle', tierTitle);
-    // console.log("Guardado automático completado"); // Descomentar para debug
   }, [rows, items, tierTitle]);
-  // --- FIN DE EFECTOS ---
 
-  // --- SENSORES (Configuración de Drag & Drop) ---
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8, // El usuario debe mover el mouse 8px para iniciar el arrastre (evita clicks accidentales)
-      },
-    })
-  );
-
-  // --- LÓGICA AUXILIAR ---
-  // Calculamos qué animes ya tenemos para que el buscador no los muestre repetidos
-  const existingAnimeIds = new Set(Object.values(items).flat().map(i => i.mal_id));
-
-  // --- MANEJADORES DE EVENTOS (Funciones que hacen cosas) ---
+  const handleColorChange = (rowId, newColorClass) => {
+    setRows((prevRows) => 
+      prevRows.map(row => 
+        row.id === rowId ? { ...row, color: newColorClass } : row
+      )
+    );
+  };
+  
+  const handleResetBoard = () => {
+    if (window.confirm("¿REINICIAR TODO?")) {
+        localStorage.clear();
+        setRows(INITIAL_ROWS);
+        const resetItems = { bank: [] };
+        INITIAL_ROWS.forEach(row => resetItems[row.id] = []);
+        setItems(resetItems);
+        setTierTitle("MI TIER LIST DE ANIME");
+    }
+  };
 
   const requestDeleteTier = (tierId) => setDeleteModal({ isOpen: true, tierId });
-
+  
   const confirmDeleteTier = () => {
     const { tierId } = deleteModal;
     if (!tierId) return;
-    // Mover animes del tier borrado al banco
     const itemsInTier = items[tierId] || [];
     setItems(prev => {
         const newItems = { ...prev };
@@ -172,308 +125,175 @@ function App() {
         delete newItems[tierId];
         return newItems;
     });
-    // Eliminar la fila visualmente
     setRows(prev => prev.filter(row => row.id !== tierId));
   };
 
-  const handleClearBoard = () => {
-    if (window.confirm("¿Seguro que quieres borrar TODOS los animes?")) {
-        setItems(prev => {
-            const resetItems = { bank: [] };
-            rows.forEach(row => resetItems[row.id] = []);
-            return resetItems;
-        });
-        // Esto limpiará también el localStorage gracias al useEffect
-    }
-  };
-
   const addNewRow = () => {
-    const newId = `tier-${Date.now()}`; // ID único basado en el tiempo
-    const nextColorIndex = rows.length % COLOR_POOL.length;
-    const nextColor = COLOR_POOL[nextColorIndex];
+    const newId = `tier-${Date.now()}`;
+    const nextColorIndex = (rows.length - INITIAL_ROWS.length) % COLOR_POOL.length;
+    const safeIndex = nextColorIndex < 0 ? 0 : nextColorIndex;
+    const nextColor = COLOR_POOL[safeIndex] || COLOR_POOL[0];
     const newRow = { id: newId, label: 'NEW', color: nextColor };
     setRows([...rows, newRow]);
     setItems(prev => ({ ...prev, [newId]: [] }));
   };
 
-  const handleRenameRow = (rowId, newLabel) => {
-      setRows(rows.map(row => row.id === rowId ? { ...row, label: newLabel } : row));
-  }
-
+  const handleRenameRow = (rowId, newLabel) => setRows(rows.map(row => row.id === rowId ? { ...row, label: newLabel } : row));
+  
   const handleRemoveItem = (animeId) => {
-    if (previewAnime && previewAnime.mal_id === animeId) {
-        setPreviewAnime(null);
-        if (previewTimeoutRef.current) clearTimeout(previewTimeoutRef.current);
-    }
-
+    if (previewAnime && previewAnime.mal_id === animeId) { setPreviewAnime(null); if (previewTimeoutRef.current) clearTimeout(previewTimeoutRef.current); }
     setItems((prev) => {
         const newState = { ...prev };
-        // Filtrar del banco
         newState.bank = newState.bank.filter(i => i.mal_id !== animeId);
-        // Filtrar de todos los tiers
-        Object.keys(newState).forEach(key => {
-            if (key !== 'bank') {
-                newState[key] = newState[key].filter(i => i.mal_id !== animeId);
-            }
-        });
+        Object.keys(newState).forEach(key => { if (key !== 'bank') newState[key] = newState[key].filter(i => i.mal_id !== animeId); });
         return newState;
     });
   };
 
-  const handleHoverStart = (anime) => {
-    if (previewTimeoutRef.current) clearTimeout(previewTimeoutRef.current);
-    previewTimeoutRef.current = setTimeout(() => { setPreviewAnime(anime); }, 400); 
-  };
+  const handleHoverStart = (anime) => { if (previewTimeoutRef.current) clearTimeout(previewTimeoutRef.current); previewTimeoutRef.current = setTimeout(() => { setPreviewAnime(anime); }, 400); };
+  const handleHoverEnd = () => { if (previewTimeoutRef.current) clearTimeout(previewTimeoutRef.current); setPreviewAnime(null); };
 
-  const handleHoverEnd = () => {
-    if (previewTimeoutRef.current) clearTimeout(previewTimeoutRef.current);
-    setPreviewAnime(null);
-  };
-
- // --- LÓGICA DE CAPTURA MEJORADA (html-to-image) ---
   const handleDownloadImage = async () => {
-      // Necesitamos que existan el contenedor y el footer
       if (!tierListRef.current || !footerRef.current) return;
-
       try {
-        // 1. TRUCO: Hacemos visible el pie de página justo antes de la foto
-        // Quitamos la clase 'hidden' de Tailwind temporalmente
         footerRef.current.classList.remove('hidden');
-
-        // 2. Generamos la imagen
-        const dataUrl = await toPng(tierListRef.current, {
-            cacheBust: true,       // Fuerza a recargar imágenes externas (ayuda con Jikan)
-            backgroundColor: '#111827', // Fondo oscuro sólido
-            quality: 0.95,         // Calidad alta
-            pixelRatio: 2,         // Doble resolución para que se vea nítida en móviles
-            // ESTO LOGRA LA "IMAGEN LIMPIA":
-            filter: (node) => {
-                // Si un elemento tiene el atributo 'data-hide-on-export', NO sale en la foto.
-                // (Usaremos este nombre que es más claro)
-                const shouldHide = node.getAttribute?.('data-hide-on-export') === 'true';
-                return !shouldHide; // Si shouldHide es true, devolvemos false para filtrar el nodo.
-            },
-            style: {
-                // Pequeño ajuste para asegurar que el fondo cubra todo
-                margin: 0,
-            }
-        });
-
-        // 3. Descargamos la imagen generada
-        const link = document.createElement('a');
-        // Nombre del archivo: "mi-tier-list-16788888.png"
-        link.download = `${tierTitle.replace(/\s+/g, '-').toLowerCase()}-${Date.now()}.png`;
-        link.href = dataUrl;
-        link.click();
-
-      } catch (error) {
-          console.error("Error al exportar:", error);
-          alert("Hubo un error al generar la imagen. Por favor, intenta de nuevo.");
-      } finally {
-        // 4. IMPORTANTE: Volvemos a ocultar el pie de página inmediatamente
-        // Pase lo que pase (incluso si hay error), el footer debe volver a estar oculto en la UI.
-        if (footerRef.current) {
-             footerRef.current.classList.add('hidden');
-        }
-      }
+        const dataUrl = await toPng(tierListRef.current, { cacheBust: true, backgroundColor: '#111827', quality: 0.95, pixelRatio: 2, filter: (node) => node.getAttribute?.('data-hide-on-export') !== 'true' });
+        const link = document.createElement('a'); link.download = `${tierTitle.replace(/\s+/g, '-').toLowerCase()}-${Date.now()}.png`; link.href = dataUrl; link.click();
+      } catch (error) { console.error(error); alert("Error al exportar."); } finally { if (footerRef.current) footerRef.current.classList.add('hidden'); }
   };
 
-  const handleSelectAnime = (anime) => {
-    const allItems = Object.values(items).flat();
-    if (!allItems.find((i) => i.mal_id === anime.mal_id)) {
-      setItems((prev) => ({ ...prev, bank: [...prev.bank, anime] }));
-    }
-  };
-
-  // --- LÓGICA DRAG & DROP (Compleja) ---
-  const handleDragStart = (event) => {
-      const { active } = event;
+  const handleSelectAnime = (anime) => { const allItems = Object.values(items).flat(); if (!allItems.find((i) => i.mal_id === anime.mal_id)) setItems((prev) => ({ ...prev, bank: [...prev.bank, anime] })); };
+  
+  // --- DRAG START ---
+  const handleDragStart = (e) => { 
+      const { active } = e;
       setActiveId(active.id);
-      if (active.data.current?.fromSearch) setDraggedSearchResult(active.data.current.anime);
+      
+      // Detectar si estamos arrastrando una FILA o un ANIME
+      if (active.data.current?.type === 'Row') {
+          setActiveItem({ type: 'Row', data: active.data.current.row });
+      } else {
+          setActiveItem({ type: 'Anime', data: active.data.current?.anime || null });
+          if (active.data.current?.fromSearch) setDraggedSearchResult(active.data.current.anime);
+      }
       handleHoverEnd();
   };
-  
-  const handleDragEnd = (event) => {
-    const { active, over } = event;
+
+  // --- DRAG END (LA LÓGICA IMPORTANTE) ---
+  const handleDragEnd = (e) => {
+    const { active, over } = e; 
     setDraggedSearchResult(null); 
-    setActiveId(null);
+    setActiveId(null); 
+    setActiveItem(null);
 
     if (!over) return;
 
-    // Caso 1: Arrastrar desde el buscador hacia un Tier o el Banco
-    if (active.data.current?.fromSearch) {
-        const anime = active.data.current.anime;
-        const findContainer = (id) => (id in items) ? id : Object.keys(items).find((key) => items[key].find((i) => i.mal_id === id));
-        const overContainer = findContainer(over.id) || over.id;
-
-        if (overContainer && items[overContainer]) {
-            const allItems = Object.values(items).flat();
-            const exists = allItems.find(i => i.mal_id === anime.mal_id);
-            if (!exists) {
-                setItems(prev => ({ ...prev, [overContainer]: [...prev[overContainer], anime] }));
-            }
+    // 1. REORDENAR FILAS (TIERS)
+    if (active.data.current?.type === 'Row') {
+        if (active.id !== over.id) {
+            setRows((rows) => {
+                const oldIndex = rows.findIndex(r => r.id === active.id);
+                const newIndex = rows.findIndex(r => r.id === over.id);
+                return arrayMove(rows, oldIndex, newIndex);
+            });
         }
         return;
     }
 
-    // Caso 2: Reordenar animes existentes
+    // 2. MOVER O REORDENAR ANIMES
+    // Función auxiliar para encontrar contenedor
     const findContainer = (id) => (id in items) ? id : Object.keys(items).find((key) => items[key].find((i) => i.mal_id === id));
-    const activeContainer = findContainer(active.id);
-    const overContainer = findContainer(over.id) || over.id;
-    
-    if (!activeContainer || !overContainer) return;
+    const activeContainer = active.data.current?.fromSearch ? null : findContainer(active.id);
+    const overContainer = findContainer(over.id) || over.id; // Si over.id es una row, usala, sino busca su contenedor
 
+    if (active.data.current?.fromSearch) {
+        if (overContainer && items[overContainer]) {
+            const anime = active.data.current.anime;
+            const exists = Object.values(items).flat().find(i => i.mal_id === anime.mal_id);
+            if (!exists) setItems(prev => ({ ...prev, [overContainer]: [...prev[overContainer], anime] }));
+        }
+        return;
+    }
+
+    if (!activeContainer || !overContainer) return;
+    
     if (activeContainer !== overContainer || active.id !== over.id) {
       setItems((prev) => {
         const activeItems = prev[activeContainer];
         const overItems = prev[overContainer];
-        const activeIndex = activeItems.findIndex((i) => i.mal_id === active.id);
-        const overIndex = (over.id in prev) ? overItems.length + 1 : overItems.findIndex((i) => i.mal_id === over.id);
+        const activeIndex = activeItems.findIndex(i => i.mal_id === active.id);
+        const overIndex = (over.id in prev) ? overItems.length + 1 : overItems.findIndex(i => i.mal_id === over.id);
         
         let newItems;
         if (activeContainer === overContainer) {
-          // Reordenar en la misma fila
-          newItems = { ...prev, [activeContainer]: arrayMove(activeItems, activeIndex, overIndex) };
+             newItems = { ...prev, [activeContainer]: arrayMove(activeItems, activeIndex, overIndex) };
         } else {
-          // Mover a otra fila
-          let newActiveItems = [...prev[activeContainer]];
-          const [movedItem] = newActiveItems.splice(activeIndex, 1);
-          let newOverItems = [...prev[overContainer]];
-          newOverItems.splice(overIndex, 0, movedItem);
-          newItems = { ...prev, [activeContainer]: newActiveItems, [overContainer]: newOverItems };
+             let newActiveItems = [...prev[activeContainer]]; const [movedItem] = newActiveItems.splice(activeIndex, 1);
+             let newOverItems = [...prev[overContainer]]; newOverItems.splice(overIndex, 0, movedItem);
+             newItems = { ...prev, [activeContainer]: newActiveItems, [overContainer]: newOverItems };
         }
         return newItems;
       });
     }
   };
 
-  const activeAnime = draggedSearchResult 
-    ? draggedSearchResult 
-    : (activeId ? Object.values(items).flat().find(i => i.mal_id === activeId) : null);
+  const activeAnimeData = activeItem?.type === 'Anime' ? (draggedSearchResult || Object.values(items).flat().find(i => i.mal_id === activeId)) : null;
 
-  // --- RENDERIZADO (El HTML que se ve) ---
   return (
-    <DndContext sensors={sensors} collisionDetection={rectIntersection} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="min-h-screen bg-[#0b0f19] text-white pb-32 font-sans selection:bg-blue-500/30 overflow-x-hidden">
-        
-        <ConfirmationModal 
-            isOpen={deleteModal.isOpen} 
-            onClose={() => setDeleteModal({ ...deleteModal, isOpen: false })}
-            onConfirm={confirmDeleteTier}
-            title="¿Eliminar Tier?"
-            message="Los animes volverán a tu colección."
-        />
-
-        {/* --- HEADER --- */}
+        <ConfirmationModal isOpen={deleteModal.isOpen} onClose={() => setDeleteModal({ ...deleteModal, isOpen: false })} onConfirm={confirmDeleteTier} title="¿Eliminar Tier?" message="Los animes volverán a tu colección." />
         <header className="bg-[#111827]/80 backdrop-blur-md sticky top-0 z-40 border-b border-gray-800">
           <div className="max-w-[1600px] mx-auto px-6 py-4 flex justify-between items-center">
-             <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg shadow-lg shadow-blue-500/20"></div>
-                <h1 className="text-xl font-bold tracking-tight text-gray-100 hidden sm:block">Anime<span className="text-blue-500">Tier</span>Maker</h1>
-             </div>
-
+             <div className="flex items-center gap-2"><div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg shadow-lg shadow-blue-500/20"></div><h1 className="text-xl font-bold tracking-tight text-gray-100 hidden sm:block">Anime<span className="text-blue-500">Tier</span>Maker</h1></div>
              <div className="flex items-center gap-2 bg-gray-800/50 p-1.5 rounded-xl border border-gray-700/50">
-                <ActionButton 
-                    onClick={addNewRow} 
-                    tooltip="Añadir Tier"
-                    icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" /></svg>}
-                />
+                <ActionButton onClick={addNewRow} tooltip="Añadir Tier" hideOnExport={true} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" /></svg>} />
                 <div className="w-px h-6 bg-gray-700 mx-1"></div>
-                <ActionButton 
-                    onClick={handleClearBoard} 
-                    danger={true}
-                    tooltip="Limpiar Todo"
-                    icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" /></svg>}
-                />
-                <ActionButton 
-                    onClick={handleDownloadImage} 
-                    tooltip="Exportar Imagen"
-                    icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" /></svg>}
-                />
+                <ActionButton onClick={handleResetBoard} danger={true} tooltip="Reset Total" hideOnExport={true} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" /></svg>} />
+                <ActionButton onClick={handleDownloadImage} tooltip="Exportar Imagen" icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" /></svg>} />
              </div>
           </div>
         </header>
-        
         <main className="max-w-[1400px] mx-auto px-4 py-8 flex flex-col gap-6">
-          
-          {/* --- ÁREA PRINCIPAL DE TIERS --- */}
           <div className="bg-gray-800/30 p-6 rounded-2xl border border-gray-700/50 shadow-2xl">
-              {/* Este div (tierListRef) es lo que saldrá en la foto */}
-              <div ref={tierListRef} className="flex flex-col gap-3 bg-[#111827] p-4 rounded-xl">
-                  <input 
-                      value={tierTitle}
-                      onChange={(e) => setTierTitle(e.target.value)}
-                      className="w-full bg-transparent text-center text-3xl md:text-5xl font-black text-white p-4 mb-4 outline-none border-b-2 border-transparent hover:border-gray-700 focus:border-blue-500 transition-colors uppercase placeholder-gray-600"
-                      placeholder="ESCRIBE UN TÍTULO..."
-                      maxLength={40}
-                  />
+              <div ref={tierListRef} className="flex flex-col gap-2 bg-[#1a1d26] p-4 rounded-xl">
+                  <input value={tierTitle} onChange={(e) => setTierTitle(e.target.value)} className="w-full bg-transparent text-center text-3xl md:text-5xl font-black text-white p-4 mb-4 outline-none border-b-2 border-transparent hover:border-gray-700 focus:border-blue-500 transition-colors uppercase placeholder-gray-600" placeholder="ESCRIBE UN TÍTULO..." maxLength={40} />
+                  
+                  {/* --- AQUÍ ESTÁ LA MAGIA DEL REORDENAMIENTO DE FILAS --- */}
+                  <SortableContext items={rows.map(r => r.id)} strategy={verticalListSortingStrategy}>
+                    {rows.map((row) => (
+                        <TierRow key={row.id} 
+                    row={row} 
+                    items={items[row.id]} 
+                    onRename={handleRenameRow} 
+                    onColorChange={handleColorChange}  // <--- ¡AGREGAR ESTA PROP AQUÍ!
+                    onRemoveAnime={handleRemoveItem} 
+                    onDeleteTier={requestDeleteTier} 
+                    onHoverStart={handleHoverStart} 
+                    onHoverEnd={handleHoverEnd} />
+                    ))}
+                  </SortableContext>
+                  {/* ----------------------------------------------------- */}
 
-                  {rows.map((row) => (
-                      <TierRow 
-                          key={row.id} 
-                          row={row} 
-                          items={items[row.id]}
-                          onRename={handleRenameRow}
-                          onRemoveAnime={handleRemoveItem}
-                          onDeleteTier={requestDeleteTier}
-                          onHoverStart={handleHoverStart}
-                          onHoverEnd={handleHoverEnd}
-                      />
-                  ))}
-                  <div 
-            ref={footerRef} 
-            className="hidden pt-4 mt-2 border-t border-gray-800 text-center bg-[#111827]"
-        >
-            <p className="text-gray-500 text-sm font-bold uppercase tracking-widest">
-                Creado en <span className="text-blue-500">AnimeTierMaker</span>
-            </p>
-        </div>
+                  <div ref={footerRef} className="hidden pt-4 mt-2 border-t border-gray-800 text-center bg-[#1a1d26]"><p className="text-gray-500 text-sm font-bold uppercase tracking-widest">Creado en <span className="text-blue-500">AnimeTierMaker</span></p></div>
               </div>
           </div>
-
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start mt-2">
-            
-            {/* --- BUSCADOR (Izquierda) --- */}
-            <div className="lg:col-span-3 bg-[#111827] rounded-xl border border-gray-800 p-4 h-[500px] flex flex-col">
-                 <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Buscador</h3>
-                 <AnimeSearch 
-                      onSelect={handleSelectAnime} 
-                      onHoverStart={handleHoverStart}
-                      onHoverEnd={handleHoverEnd}
-                      existingIds={existingAnimeIds} 
-                 />
-            </div>
-
-            {/* --- BANCO DE IMÁGENES (Derecha) --- */}
-            <div className="lg:col-span-9 bg-[#111827] rounded-xl border border-gray-800 p-4 h-[500px] flex flex-col">
-                 <div className="flex justify-between items-center mb-2 px-2">
-                    <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">
-                        Tu Colección <span className="text-blue-500">({items.bank.length})</span>
-                    </h3>
-                 </div>
-                 
-                 <div className="flex-1 min-h-0 relative">
-                     <div className="absolute inset-0">
-                        <BankDroppable 
-                            items={items.bank} 
-                            onRemove={handleRemoveItem}
-                            onHoverStart={handleHoverStart}
-                            onHoverEnd={handleHoverEnd}
-                        />
-                     </div>
-                 </div>
-            </div>
-
+            <div className="lg:col-span-3 bg-[#111827] rounded-xl border border-gray-800 p-4 h-[500px] flex flex-col"><h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Buscador</h3><AnimeSearch onSelect={handleSelectAnime} onHoverStart={handleHoverStart} onHoverEnd={handleHoverEnd} existingIds={existingAnimeIds} /></div>
+            <div className="lg:col-span-9 bg-[#111827] rounded-xl border border-gray-800 p-4 h-[500px] flex flex-col"><div className="flex justify-between items-center mb-2 px-2"><h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Tu Colección <span className="text-blue-500">({items.bank.length})</span></h3></div><div className="flex-1 min-h-0 relative"><div className="absolute inset-0"><BankDroppable items={items.bank} onRemove={handleRemoveItem} onHoverStart={handleHoverStart} onHoverEnd={handleHoverEnd} /></div></div></div>
           </div>
-
         </main>
         
-        {/* --- ELEMENTOS FLOTANTES --- */}
+        {/* DRAG OVERLAY: Muestra lo que estás arrastrando (Anime o Fila) */}
         <DragOverlay dropAnimation={{ duration: 250, easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)' }}>
-            {activeAnime ? (
-                <div className="cursor-grabbing pointer-events-none">
-                     <AnimeCard anime={activeAnime} isOverlay={true} />
-                </div>
+            {activeItem?.type === 'Anime' && activeAnimeData ? (
+                <div className="cursor-grabbing pointer-events-none"><AnimeCard anime={activeAnimeData} isOverlay={true} /></div>
+            ) : null}
+            {activeItem?.type === 'Row' ? (
+                // Vista previa de la Fila cuando la arrastras (simplificada)
+                 <div className="w-full h-24 bg-gray-800/90 border border-blue-500 rounded-xl flex items-center justify-center shadow-2xl">
+                    <span className="text-xl font-bold text-white uppercase">{activeItem.data.label}</span>
+                 </div>
             ) : null}
         </DragOverlay>
 
@@ -482,5 +302,4 @@ function App() {
     </DndContext>
   );
 }
-
 export default App;
