@@ -91,7 +91,7 @@ function App() {
   const [previewAnime, setPreviewAnime] = useState(null);
   const previewTimeoutRef = useRef(null);
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, tierId: null });
-
+  const existingAnimeIds = new Set(Object.values(items).flat().map(i => i.mal_id));
   // --- LÓGICA ---
   const requestDeleteTier = (tierId) => setDeleteModal({ isOpen: true, tierId });
 
@@ -314,6 +314,7 @@ function App() {
                       onSelect={handleSelectAnime} 
                       onHoverStart={handleHoverStart}
                       onHoverEnd={handleHoverEnd}
+                      existingIds={existingAnimeIds}
                   />
             </div>
 
