@@ -112,11 +112,8 @@ export function useTierList() {
   };
 
   // --- 5. LÓGICA CORREGIDA PARA MÓVIL (Touch) ---
-
-  // A. HOVER SEGURO (Ignora toques en móvil para no tapar pantalla)
   const handleHoverStart = (anime) => {
-      if (activeId) return; // Si arrastras, no mostrar
-      // Detección simple de touch
+      if (activeId) return; 
       const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
       if (isTouch) return; 
 
@@ -129,7 +126,6 @@ export function useTierList() {
       setPreviewAnime(null);
   };
 
-  // B. RESIZE HÍBRIDO (Mouse + Touch)
   const handleResizeStart = useCallback((e) => {
     if (e.cancelable && e.type === 'touchstart') e.preventDefault();
     const container = containerRef.current;
@@ -139,11 +135,8 @@ export function useTierList() {
     const startY = isTouch ? e.touches[0].clientY : e.clientY;
     const startHeight = container.getBoundingClientRect().height;
     
-    // --- CORRECCIÓN AQUÍ ---
-    // Usamos Math.max para asegurar que el límite no sea menor que la altura actual.
-    // Esto evita el "salto" brusco si la lista ya es muy larga.
+    // Evita saltos bruscos
     const maxHeight = Math.max(window.innerHeight * 0.85, startHeight); 
-    // -----------------------
 
     const onMove = (moveEvent) => {
       const currentY = isTouch ? moveEvent.touches[0].clientY : moveEvent.clientY;
@@ -238,13 +231,34 @@ export function useTierList() {
     return pointerWithin(args);
   }, []);
 
+  // --- 7. NUEVA FUNCIÓN: CARGAR TEMPLATE EXTERNO ---
+  // Esta es la pieza clave para que funcione la Galería
+  const importFromTemplate = (templateData) => {
+      // 1. Poner el título
+      setTierTitle(templateData.title);
+      
+      // 2. Resetear filas a lo básico
+      setRows(INITIAL_ROWS); 
+
+      // 3. Poner todos los animes en el Banco
+      const newItems = { bank: [] };
+      INITIAL_ROWS.forEach(row => newItems[row.id] = []);
+      
+      // Extraemos solo la info del anime de la estructura de la base de datos
+      if (templateData.template_items) {
+          newItems.bank = templateData.template_items.map(item => item.anime_data);
+      }
+      
+      setItems(newItems);
+  };
+
   return {
     // Data
     tierTitle, setTierTitle, rows, items, activeId, activeItem, activeAnimeData,
     previewAnime, stats, existingAnimeIds, containerRef,
     // Actions
     addNewRow, handleRenameRow, handleColorChange, handleRemoveItem, handleSelectAnime,
-    clearBoard, deleteTier,
+    clearBoard, deleteTier, importFromTemplate, // <--- EXPORTAMOS LA NUEVA FUNCIÓN
     // Events
     handleResizeStart, handleHoverStart, handleHoverEnd, 
     handleDragStart, handleDragEnd, customCollisionDetection

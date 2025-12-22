@@ -1,10 +1,12 @@
+import { useState, useRef, useEffect } from 'react';
 import { DndContext, DragOverlay, useSensor, useSensors, PointerSensor, TouchSensor } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { toPng } from 'html-to-image';
-import { useState, useRef, useEffect } from 'react'; // <--- Agregamos useEffect
-import { supabase } from './lib/supabaseClient';      // <--- Agregamos esto
+import { supabase } from './lib/supabaseClient';
+
 // Hooks
-import { useTierList } from './hooks/useTierList'; // <--- IMPORTANTE
+import { useTierList } from './hooks/useTierList';
+import { useTemplates } from './hooks/useTemplates';
 
 // Componentes
 import { Header } from './components/Header';
@@ -15,50 +17,48 @@ import { TierRow } from './components/TierRow';
 import { CinematicPreview } from './components/CinematicPreview';
 import { AnimeCard } from './components/AnimeCard';
 import { ConfirmationModal } from './components/ConfirmationModal';
+import { PublishModal } from './components/PublishModal';
+import { TemplateGallery } from './components/TemplateGallery'; // <--- Importamos la Galería
 import { SakuraBackground } from './components/SakuraBackground';
 import { TokyoCity } from './components/TokyoCity';
 
 function App() {
-  // Estado para saber quién está conectado
   const [user, setUser] = useState(null);
+  
+  // Estados para los Modales
+  const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
+  const [isGalleryOpen, setIsGalleryOpen] = useState(false); // <--- Estado para Galería
+  
+  const { publishTemplate, loading: publishing } = useTemplates();
 
   useEffect(() => {
-    // 1. Ver si ya hay alguien conectado al cargar
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
     });
-
-    // 2. Escuchar si alguien entra o sale en tiempo real
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
     });
-
     return () => subscription.unsubscribe();
   }, []);
-  // 1. Invocamos nuestro super hook
+
   const {
     tierTitle, setTierTitle, rows, items, activeId, activeItem, activeAnimeData,
     previewAnime, stats, existingAnimeIds, containerRef,
     addNewRow, handleRenameRow, handleColorChange, handleRemoveItem, handleSelectAnime,
-    clearBoard, deleteTier,
+    clearBoard, deleteTier, importFromTemplate, // <--- Importamos la nueva función
     handleResizeStart, handleHoverStart, handleHoverEnd, 
     handleDragStart, handleDragEnd, customCollisionDetection
   } = useTierList();
 
-  // 2. Lógica local solo para UI (Modales y Exportar imagen)
   const [confirmation, setConfirmation] = useState({ isOpen: false, type: null, data: null, title: "", message: "" });
   const tierListRef = useRef(null);
   const footerRef = useRef(null);
 
-  // Sensores optimizados para Móvil y PC
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(TouchSensor, { 
-        activationConstraint: { delay: 250, tolerance: 5 } // Delay evita drags accidentales al scrollear
-    })
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } })
   );
 
-  // Manejo de modales
   const requestReset = () => setConfirmation({ isOpen: true, type: 'RESET', title: "⚠️ ¿REINICIAR TODO?", message: "Se borrará todo el progreso.", data: null });
   const requestDeleteTier = (id) => setConfirmation({ isOpen: true, type: 'DELETE_TIER', title: "¿Eliminar Fila?", message: "Los animes volverán al banco.", data: id });
   
@@ -66,6 +66,35 @@ function App() {
     if (confirmation.type === 'RESET') clearBoard();
     if (confirmation.type === 'DELETE_TIER') deleteTier(confirmation.data);
     setConfirmation(c => ({ ...c, isOpen: false }));
+  };
+
+  // --- LÓGICA DE PUBLICAR ---
+  const handleRequestPublish = () => {
+    if (!user) return alert("Debes iniciar sesión para guardar templates 🔒");
+    const hasItems = Object.values(items).some(list => list.length > 0);
+    if (!hasItems) return alert("¡Tu lista está vacía! Agrega algunos animes primero.");
+    setIsPublishModalOpen(true);
+  };
+
+  const handleConfirmPublish = async ({ title, description }) => {
+    const allAnimes = Object.values(items).flat();
+    const result = await publishTemplate({
+        title, description, items: allAnimes, user
+    });
+    if (result.success) {
+        setIsPublishModalOpen(false);
+        alert("¡Template publicado exitosamente! 🚀");
+    } else {
+        alert("Error al publicar: " + result.error.message);
+    }
+  };
+
+  // --- LÓGICA DE GALERÍA (CARGAR TEMPLATE) ---
+  const handleLoadTemplate = (templateData) => {
+      if (confirm(`¿Cargar "${templateData.title}"? Se reemplazará tu lista actual.`)) {
+          importFromTemplate(templateData);
+          setIsGalleryOpen(false); // Cerramos la galería
+      }
   };
 
   const handleDownloadImage = async () => {
@@ -85,7 +114,6 @@ function App() {
   };
 
   return (
-    
     <DndContext sensors={sensors} collisionDetection={customCollisionDetection} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="min-h-screen bg-[#110518] text-white flex flex-col font-sans selection:bg-pink-500/30 overflow-x-hidden relative">        
         
@@ -98,29 +126,41 @@ function App() {
         <TokyoCity />
         <SakuraBackground />
         
+        {/* MODALES */}
         <ConfirmationModal isOpen={confirmation.isOpen} onClose={() => setConfirmation(c => ({...c, isOpen: false}))} onConfirm={handleConfirmAction} title={confirmation.title} message={confirmation.message} />
+        
+        <PublishModal 
+            isOpen={isPublishModalOpen}
+            onClose={() => setIsPublishModalOpen(false)}
+            onConfirm={handleConfirmPublish}
+            initialTitle={tierTitle}
+            loading={publishing}
+        />
+
+        <TemplateGallery 
+            isOpen={isGalleryOpen}
+            onClose={() => setIsGalleryOpen(false)}
+            onLoad={handleLoadTemplate}
+        />
 
         <Header 
-  user={user}   // <--- ¡Aquí le pasamos el dato!
-  onAddRow={addNewRow} 
-  onReset={requestReset} 
-  onExport={handleDownloadImage} 
-/>
+            user={user}
+            onAddRow={addNewRow} 
+            onReset={requestReset} 
+            onExport={handleDownloadImage}
+            onSave={handleRequestPublish}
+            onOpenGallery={() => setIsGalleryOpen(true)} // <--- Conectamos el botón nuevo
+        />
 
         <main className="flex-1 max-w-[1400px] w-full mx-auto px-4 py-8 flex flex-col gap-6 relative z-10">
-
-
-          {/* TABLA PRINCIPAL */}
+          
           <div 
             ref={containerRef}
             className="bg-gray-800/40 backdrop-blur-sm rounded-2xl border border-gray-700/50 shadow-2xl flex flex-col relative group transition-colors duration-300 hover:border-gray-600 w-full"
-            // EL CAMBIO ESTÁ AQUÍ ABAJO: Borramos "maxHeight: '82vh'"
             style={{ height: 'auto', minHeight: '400px' }} 
           >
-            {/* min-h-0 es CRUCIAL para evitar que el flex hijo se desborde sin scroll */}
             <div className="flex-1 overflow-y-auto custom-scrollbar p-6 pb-10 min-h-0">
                   <div ref={tierListRef} className="flex flex-col gap-2 bg-[#1a1d26] p-4 rounded-xl shadow-inner">
-
 
                       <input 
                         value={tierTitle} onChange={(e) => setTierTitle(e.target.value)} 
@@ -145,10 +185,9 @@ function App() {
                   </div>
               </div>
 
-              {/* RESIZER BAR MEJORADO */}
               <div 
                 onMouseDown={handleResizeStart}
-                onTouchStart={handleResizeStart} // <--- SOPORTE TOUCH AÑADIDO
+                onTouchStart={handleResizeStart} 
                 className="h-6 w-full cursor-row-resize flex items-center justify-center bg-gray-900/50 hover:bg-blue-600/20 border-t border-gray-700/50 rounded-b-2xl transition-colors group-hover:border-blue-500/30 touch-none"
               >
                   <div className="w-16 h-1 bg-gray-600 rounded-full group-hover:bg-blue-400 transition-colors"></div>
