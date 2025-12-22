@@ -18,7 +18,7 @@ import { CinematicPreview } from './components/CinematicPreview';
 import { AnimeCard } from './components/AnimeCard';
 import { ConfirmationModal } from './components/ConfirmationModal';
 import { PublishModal } from './components/PublishModal';
-import { TemplateGallery } from './components/TemplateGallery'; // <--- Importamos la Galería
+import { TemplateGallery } from './components/TemplateGallery';
 import { SakuraBackground } from './components/SakuraBackground';
 import { TokyoCity } from './components/TokyoCity';
 
@@ -27,7 +27,7 @@ function App() {
   
   // Estados para los Modales
   const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
-  const [isGalleryOpen, setIsGalleryOpen] = useState(false); // <--- Estado para Galería
+  const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   
   const { publishTemplate, loading: publishing } = useTemplates();
 
@@ -45,7 +45,7 @@ function App() {
     tierTitle, setTierTitle, rows, items, activeId, activeItem, activeAnimeData,
     previewAnime, stats, existingAnimeIds, containerRef,
     addNewRow, handleRenameRow, handleColorChange, handleRemoveItem, handleSelectAnime,
-    clearBoard, deleteTier, importFromTemplate, // <--- Importamos la nueva función
+    clearBoard, deleteTier, importFromTemplate, requestReset: logicReset, // Renombramos para usar nuestro wrapper
     handleResizeStart, handleHoverStart, handleHoverEnd, 
     handleDragStart, handleDragEnd, customCollisionDetection
   } = useTierList();
@@ -59,6 +59,7 @@ function App() {
     useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } })
   );
 
+  // Wrappers para las confirmaciones
   const requestReset = () => setConfirmation({ isOpen: true, type: 'RESET', title: "⚠️ ¿REINICIAR TODO?", message: "Se borrará todo el progreso.", data: null });
   const requestDeleteTier = (id) => setConfirmation({ isOpen: true, type: 'DELETE_TIER', title: "¿Eliminar Fila?", message: "Los animes volverán al banco.", data: id });
   
@@ -89,12 +90,10 @@ function App() {
     }
   };
 
-  // --- LÓGICA DE GALERÍA (CARGAR TEMPLATE) ---
+  // --- LÓGICA DE GALERÍA ---
   const handleLoadTemplate = (templateData) => {
-      if (confirm(`¿Cargar "${templateData.title}"? Se reemplazará tu lista actual.`)) {
-          importFromTemplate(templateData);
-          setIsGalleryOpen(false); // Cerramos la galería
-      }
+      importFromTemplate(templateData);
+      setIsGalleryOpen(false);
   };
 
   const handleDownloadImage = async () => {
@@ -145,15 +144,15 @@ function App() {
 
         <Header 
             user={user}
-            onAddRow={addNewRow} 
-            onReset={requestReset} 
+            // Ya no pasamos onAddRow ni onReset aquí porque los movimos al cuerpo
             onExport={handleDownloadImage}
             onSave={handleRequestPublish}
-            onOpenGallery={() => setIsGalleryOpen(true)} // <--- Conectamos el botón nuevo
+            onOpenGallery={() => setIsGalleryOpen(true)}
         />
 
         <main className="flex-1 max-w-[1400px] w-full mx-auto px-4 py-8 flex flex-col gap-6 relative z-10">
           
+          {/* TABLERO PRINCIPAL */}
           <div 
             ref={containerRef}
             className="bg-gray-800/40 backdrop-blur-sm rounded-2xl border border-gray-700/50 shadow-2xl flex flex-col relative group transition-colors duration-300 hover:border-gray-600 w-full"
@@ -185,6 +184,7 @@ function App() {
                   </div>
               </div>
 
+              {/* Handle para redimensionar */}
               <div 
                 onMouseDown={handleResizeStart}
                 onTouchStart={handleResizeStart} 
@@ -193,6 +193,33 @@ function App() {
                   <div className="w-16 h-1 bg-gray-600 rounded-full group-hover:bg-blue-400 transition-colors"></div>
               </div>
           </div>
+
+          {/* --- ✨ AQUÍ ESTÁN LOS BOTONES DE CONTROL ✨ --- */}
+          <div className="flex flex-wrap justify-center items-center gap-4 py-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            
+            {/* Botón AÑADIR FILA */}
+            <button
+              onClick={addNewRow}
+              className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white px-6 py-2.5 rounded-full font-bold shadow-lg shadow-blue-900/20 transition-all transform active:scale-95 border border-blue-400/20 hover:shadow-blue-500/40"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+              </svg>
+              Añadir Fila
+            </button>
+
+            {/* Botón REINICIAR */}
+            <button
+              onClick={requestReset}
+              className="flex items-center gap-2 bg-gray-800/80 hover:bg-red-500/10 hover:text-red-400 text-gray-400 border border-gray-700 hover:border-red-500/30 px-6 py-2.5 rounded-full font-bold transition-all transform active:scale-95 backdrop-blur-sm"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+              </svg>
+              Reiniciar Todo
+            </button>
+          </div>
+          {/* -------------------------------------------------- */}
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start mt-2">
             <div className="lg:col-span-3 bg-[#111827]/80 backdrop-blur rounded-xl border border-gray-800 p-4 h-[500px] flex flex-col shadow-lg">

@@ -13,13 +13,17 @@ export function useTemplates() {
         if (items.length === 0) throw new Error("La lista está vacía.");
 
         // Guardar la cabecera
+        // 1. Guardar la "Carpeta" (El Template) con la firma del autor
         const { data: template, error: tError } = await supabase
             .from('tier_templates')
             .insert([{ 
                 title, 
                 description, 
                 user_id: user.id,
-                is_public: true 
+                is_public: true,
+                // --- NUEVO: Guardamos la firma del autor ---
+                author_name: user.user_metadata.full_name?.split(' ')[0] || 'Anónimo',
+                author_avatar: user.user_metadata.avatar_url
             }])
             .select()
             .single();
