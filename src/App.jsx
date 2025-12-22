@@ -1,9 +1,8 @@
-import { useState, useRef } from 'react';
 import { DndContext, DragOverlay, useSensor, useSensors, PointerSensor, TouchSensor } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { toPng } from 'html-to-image';
-import { useEffect } from 'react'; // Asegúrate de tener useEffect importado
-import { supabase } from './lib/supabaseClient'; // <--- Importamos nuestro cliente
+import { useState, useRef, useEffect } from 'react'; // <--- Agregamos useEffect
+import { supabase } from './lib/supabaseClient';      // <--- Agregamos esto
 // Hooks
 import { useTierList } from './hooks/useTierList'; // <--- IMPORTANTE
 
@@ -20,6 +19,22 @@ import { SakuraBackground } from './components/SakuraBackground';
 import { TokyoCity } from './components/TokyoCity';
 
 function App() {
+  // Estado para saber quién está conectado
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    // 1. Ver si ya hay alguien conectado al cargar
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+
+    // 2. Escuchar si alguien entra o sale en tiempo real
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
   // 1. Invocamos nuestro super hook
   const {
     tierTitle, setTierTitle, rows, items, activeId, activeItem, activeAnimeData,
@@ -85,7 +100,12 @@ function App() {
         
         <ConfirmationModal isOpen={confirmation.isOpen} onClose={() => setConfirmation(c => ({...c, isOpen: false}))} onConfirm={handleConfirmAction} title={confirmation.title} message={confirmation.message} />
 
-        <Header onAddRow={addNewRow} onReset={requestReset} onExport={handleDownloadImage} />
+        <Header 
+  user={user}   // <--- ¡Aquí le pasamos el dato!
+  onAddRow={addNewRow} 
+  onReset={requestReset} 
+  onExport={handleDownloadImage} 
+/>
 
         <main className="flex-1 max-w-[1400px] w-full mx-auto px-4 py-8 flex flex-col gap-6 relative z-10">
 
