@@ -27,9 +27,7 @@ function App() {
   
   // Estados para los Modales
   const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
-  const [isGalleryOpen, setIsGalleryOpen] = useState(false);
-  
-  const { publishTemplate, loading: publishing } = useTemplates();
+    const { publishTemplate, loading: publishing } = useTemplates();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -59,6 +57,21 @@ function App() {
     useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } })
   );
 
+  const [isGalleryOpen, setIsGalleryOpen] = useState(false);
+  const [galleryMode, setGalleryMode] = useState('community'); // 'community' | 'mine'
+
+  // ...
+
+  // 2. Funciones para abrir
+  const openCommunityGallery = () => {
+    setGalleryMode('community');
+    setIsGalleryOpen(true);
+  };
+
+  const openMyTemplates = () => {
+    setGalleryMode('mine');
+    setIsGalleryOpen(true);
+  };
   // Wrappers para las confirmaciones
   const requestReset = () => setConfirmation({ isOpen: true, type: 'RESET', title: "⚠️ ¿REINICIAR TODO?", message: "Se borrará todo el progreso.", data: null });
   const requestDeleteTier = (id) => setConfirmation({ isOpen: true, type: 'DELETE_TIER', title: "¿Eliminar Fila?", message: "Los animes volverán al banco.", data: id });
@@ -76,7 +89,6 @@ function App() {
     if (!hasItems) return alert("¡Tu lista está vacía! Agrega algunos animes primero.");
     setIsPublishModalOpen(true);
   };
-
   const handleConfirmPublish = async ({ title, description }) => {
     const allAnimes = Object.values(items).flat();
     const result = await publishTemplate({
@@ -140,14 +152,16 @@ function App() {
             isOpen={isGalleryOpen}
             onClose={() => setIsGalleryOpen(false)}
             onLoad={handleLoadTemplate}
+            viewMode={galleryMode} // <--- Nuevo Prop
+            user={user}            // <--- Nuevo Prop
         />
 
         <Header 
             user={user}
-            // Ya no pasamos onAddRow ni onReset aquí porque los movimos al cuerpo
             onExport={handleDownloadImage}
             onSave={handleRequestPublish}
-            onOpenGallery={() => setIsGalleryOpen(true)}
+            onOpenGallery={openCommunityGallery} // Botón del ojo
+            onOpenMyTemplates={openMyTemplates}  // Botón del menú dropdown
         />
 
         <main className="flex-1 max-w-[1400px] w-full mx-auto px-4 py-8 flex flex-col gap-6 relative z-10">

@@ -53,11 +53,11 @@ export function useTemplates() {
     }
   };
 
-  // 2. LEER (Obtener templates recientes) - ¡Esta era la que faltaba!
-  const getRecentTemplates = async () => {
+  // 2. LEER (Búsqueda inteligente)
+  const getTemplates = async ({ search = '', userId = null } = {}) => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('tier_templates')
         .select(`
           *,
@@ -66,9 +66,23 @@ export function useTemplates() {
             position
           )
         `)
-        .order('created_at', { ascending: false })
-        .limit(20);
+        .order('created_at', { ascending: false });
 
+      // Si nos pasan un ID de usuario, filtramos solo sus templates
+      if (userId) {
+        query = query.eq('user_id', userId);
+      } else {
+        // Si es la comunidad, limitamos a 50 para no explotar
+        query = query.limit(50);
+      }
+
+      // Si hay texto de búsqueda, buscamos en título O autor
+      if (search.trim()) {
+        const term = `%${search}%`; // Los % son comodines
+        query = query.or(`title.ilike.${term},author_name.ilike.${term}`);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return data;
 
@@ -80,9 +94,9 @@ export function useTemplates() {
     }
   };
 
+  // ¡No olvides cambiar el return final!
   return { 
       publishTemplate, 
-      getRecentTemplates, // <--- ¡Asegúrate de que esta línea esté aquí!
+      getTemplates, // <--- Ahora exportamos esta función genérica
       loading 
-  };
-}
+  };   };
