@@ -70,7 +70,7 @@ export function TierRow({ row, items, onRename, onColorChange, onRemoveAnime, on
       {/* --- SIDEBAR IZQUIERDA (MANGO) --- */}
       <div 
           {...attributes} {...listeners}
-          className={`w-24 md:w-32 flex-shrink-0 flex flex-col justify-center items-center p-2 relative bg-gradient-to-br ${row.color} border-r border-white/10 rounded-l-xl cursor-grab active:cursor-grabbing hover:brightness-110 transition-all`}
+          className={`touch-none w-24 md:w-32 flex-shrink-0 flex flex-col justify-center items-center p-2 relative bg-gradient-to-br ${row.color} border-r border-white/10 rounded-l-xl cursor-grab active:cursor-grabbing hover:brightness-110 transition-all`}
       >
          <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] mix-blend-overlay pointer-events-none"></div>
          {isRenaming ? (
@@ -119,6 +119,7 @@ export function TierRow({ row, items, onRename, onColorChange, onRemoveAnime, on
                                     onClick={() => { onColorChange(row.id, color.class); setShowColorPicker(false); }}
                                     className={`w-8 h-8 rounded-full bg-gradient-to-br ${color.class} hover:scale-110 hover:ring-2 hover:ring-white transition-all shadow-md cursor-pointer`}
                                     title={color.id}
+                                    aria-label={`Seleccionar color ${color.id}`} // <--- ACCESIBILIDAD AÑADIDA
                                 />
                             ))}
                         </div>

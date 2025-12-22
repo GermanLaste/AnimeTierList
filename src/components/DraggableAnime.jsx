@@ -20,8 +20,7 @@ export function DraggableAnime({ anime, id, onRemove, onHoverStart, onHoverEnd }
   };
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners} className="touch-none flex-shrink-0">
-       <AnimeCard 
+<div ref={setNodeRef} style={style} {...attributes} {...listeners} className="touch-none flex-shrink-0">       <AnimeCard 
          anime={anime} 
          onRemove={onRemove} 
          onHoverStart={onHoverStart}

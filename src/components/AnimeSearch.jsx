@@ -42,6 +42,7 @@ export function AnimeSearch({ onSelect, onHoverStart, onHoverEnd, existingIds })
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [hasError, setHasError] = useState(false); // <--- NUEVO ESTADO DE ERROR
 
   // --- LÓGICA DE LIVE SEARCH (DEBOUNCE) ---
   useEffect(() => {
@@ -57,15 +58,19 @@ export function AnimeSearch({ onSelect, onHoverStart, onHoverEnd, existingIds })
     // 2. Iniciamos un temporizador de 500ms
     const delayDebounceFn = setTimeout(async () => {
         try {
+            setHasError(false); // Resetear error antes de buscar
             const response = await fetch(`https://api.jikan.moe/v4/anime?q=${query}&limit=12`);
+            if (!response.ok) throw new Error("Error en API"); // Detectar fallos HTTP
             const data = await response.json();
-            setResults(data.data || []); // El "|| []" evita errores si la API falla
+            setResults(data.data || []);
         } catch (error) {
             console.error(error);
+            setHasError(true); // <--- ACTIVAR MODO ERROR
+            setResults([]);
         } finally {
             setLoading(false);
         }
-    }, 500); // <-- TIEMPO DE ESPERA (500ms)
+    }, 500);
 
     // 3. Función de limpieza: Si el usuario escribe antes de los 500ms, cancelamos la búsqueda anterior
     return () => clearTimeout(delayDebounceFn);
@@ -111,7 +116,13 @@ export function AnimeSearch({ onSelect, onHoverStart, onHoverEnd, existingIds })
             
             {visibleResults.length === 0 && !loading && (
                 <div className="col-span-3 text-center text-gray-600 py-10 flex flex-col items-center gap-2 opacity-50">
-                   {query.length > 0 && query.length < 3 ? (
+                   {hasError ? ( 
+                       // <--- NUEVO MENSAJE DE ERROR
+                       <>
+                        <span className="text-2xl">⚠️</span>
+                        <span className="text-xs text-red-400">Error de conexión con Jikan</span>
+                       </>
+                   ) : query.length > 0 && query.length < 3 ? (
                        <span className="text-xs">Escribe al menos 3 letras...</span>
                    ) : results.length > 0 ? (
                        <span className="text-xs">¡Ya tienes todos estos animes!</span>
