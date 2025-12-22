@@ -2,7 +2,8 @@ import { useState, useRef } from 'react';
 import { DndContext, DragOverlay, useSensor, useSensors, PointerSensor, TouchSensor } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { toPng } from 'html-to-image';
-
+import { useEffect } from 'react'; // Asegúrate de tener useEffect importado
+import { supabase } from './lib/supabaseClient'; // <--- Importamos nuestro cliente
 // Hooks
 import { useTierList } from './hooks/useTierList'; // <--- IMPORTANTE
 
@@ -69,6 +70,7 @@ function App() {
   };
 
   return (
+    
     <DndContext sensors={sensors} collisionDetection={customCollisionDetection} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="min-h-screen bg-[#110518] text-white flex flex-col font-sans selection:bg-pink-500/30 overflow-x-hidden relative">        
         
