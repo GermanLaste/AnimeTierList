@@ -86,15 +86,20 @@ function App() {
         <Header onAddRow={addNewRow} onReset={requestReset} onExport={handleDownloadImage} />
 
         <main className="flex-1 max-w-[1400px] w-full mx-auto px-4 py-8 flex flex-col gap-6 relative z-10">
-          
+
+
           {/* TABLA PRINCIPAL */}
           <div 
             ref={containerRef}
             className="bg-gray-800/40 backdrop-blur-sm rounded-2xl border border-gray-700/50 shadow-2xl flex flex-col relative group transition-colors duration-300 hover:border-gray-600 w-full"
-            style={{ height: 'auto', minHeight: '400px', maxHeight: '82vh' }} 
+            // EL CAMBIO ESTÁ AQUÍ ABAJO: Borramos "maxHeight: '82vh'"
+            style={{ height: 'auto', minHeight: '400px' }} 
           >
-{/* min-h-0 es CRUCIAL para evitar que el flex hijo se desborde sin scroll */}
-              <div className="flex-1 overflow-y-auto custom-scrollbar p-6 pb-10 min-h-0">                  <div ref={tierListRef} className="flex flex-col gap-2 bg-[#1a1d26] p-4 rounded-xl shadow-inner">
+            {/* min-h-0 es CRUCIAL para evitar que el flex hijo se desborde sin scroll */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-6 pb-10 min-h-0">
+                  <div ref={tierListRef} className="flex flex-col gap-2 bg-[#1a1d26] p-4 rounded-xl shadow-inner">
+
+
                       <input 
                         value={tierTitle} onChange={(e) => setTierTitle(e.target.value)} 
                         className="w-full bg-transparent text-center text-3xl md:text-5xl font-russo p-4 mb-2 outline-none border-b-2 border-transparent hover:border-gray-700 focus:border-blue-500 transition-all uppercase tracking-wider bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 bg-clip-text text-transparent caret-white placeholder-gray-700" 

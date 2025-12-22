@@ -1,3 +1,4 @@
+// src/hooks/useTierList.js
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { arrayMove } from '@dnd-kit/sortable';
 import { pointerWithin, closestCenter } from '@dnd-kit/core';
@@ -137,7 +138,12 @@ export function useTierList() {
     const isTouch = e.type === 'touchstart';
     const startY = isTouch ? e.touches[0].clientY : e.clientY;
     const startHeight = container.getBoundingClientRect().height;
-    const maxHeight = window.innerHeight * 0.85; 
+    
+    // --- CORRECCIÓN AQUÍ ---
+    // Usamos Math.max para asegurar que el límite no sea menor que la altura actual.
+    // Esto evita el "salto" brusco si la lista ya es muy larga.
+    const maxHeight = Math.max(window.innerHeight * 0.85, startHeight); 
+    // -----------------------
 
     const onMove = (moveEvent) => {
       const currentY = isTouch ? moveEvent.touches[0].clientY : moveEvent.clientY;
