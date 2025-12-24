@@ -25,10 +25,8 @@ export function DraggableAnime({ anime, id, onRemove, onHoverStart, onHoverEnd }
          onRemove={onRemove} 
          onHoverStart={onHoverStart}
          onHoverEnd={onHoverEnd}
-         // AQUÍ ESTÁ LA MAGIA: Pasamos la función de abrir link al click
-         // dnd-kit es inteligente: si detecta arrastre, anula este evento onClick automáticamente.
          onClick={handleOpenLink}
-         showLinkIcon={true} // Le decimos a la carta que muestre el iconito de link
+         showLinkIcon={true} 
        />
     </div>
   );

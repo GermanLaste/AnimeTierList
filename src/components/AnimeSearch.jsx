@@ -42,11 +42,11 @@ export function AnimeSearch({ onSelect, onHoverStart, onHoverEnd, existingIds })
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [hasError, setHasError] = useState(false); // <--- NUEVO ESTADO DE ERROR
+  const [hasError, setHasError] = useState(false); 
 
   // --- LÓGICA DE LIVE SEARCH (DEBOUNCE) ---
   useEffect(() => {
-    // 1. Si el input está vacío o es muy corto, limpiamos y salimos
+    
     if (!query.trim() || query.length < 3) {
         setResults([]);
         setLoading(false);

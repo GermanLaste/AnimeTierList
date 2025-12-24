@@ -31,22 +31,14 @@ dist-ssr
 # Excepción: A veces queremos subir el ejemplo de las variables
 !.env.example
 
-# Archivos de sistema de Windows (Ya que vi que usas Windows)
+# Archivos de sistema de Windows 
 Thumbs.db
 ehthumbs.db
 Desktop.ini
 
-# Cache de ESLint (te ahorra subir archivos de checkeo)
+# Cache de ESLint 
 .eslintcache
 
-# Directorios de coverage (si haces tests en el futuro)
+# Directorios de coverage
 coverage/
 .nyc_output/
-
-# Ignorar para compartir con IA (Opcional, pero ahorra tokens)
-package-lock.json
-yarn.lock
-*.svg
-*.png
-*.jpg
-*.ico

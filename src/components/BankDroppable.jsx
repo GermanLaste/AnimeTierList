@@ -7,7 +7,6 @@ import { DraggableAnime } from './DraggableAnime';
 export function BankDroppable({ items, onRemove, onHoverStart, onHoverEnd }) {
   const { setNodeRef } = useDroppable({ id: 'bank' });
   
-  // Optimizamos los IDs para que dnd-kit no se vuelva loco recalculando
   const ids = useMemo(() => items.map(i => i.mal_id), [items]);
 
   return (

@@ -2,7 +2,6 @@ import { useMemo } from 'react';
 
 export function TokyoCity() {
   const buildings = useMemo(() => {
-    // Generamos las capas de edificios (igual que antes, pero ajustando densidades)
     
     // Capa 1: Fondo (Siluetas oscuras)
     const backLayer = Array.from({ length: 10 }).map((_, i) => ({
@@ -38,8 +37,7 @@ export function TokyoCity() {
 
   // OPTIMIZACIÓN: Renderizado de ventanas más ligero
   const renderWindows = (heightPct) => {
-    // Reducimos un poco la cantidad máxima de ventanas por edificio (Max 8 en vez de 15)
-    // Esto reduce el DOM total drásticamente sin perder el "look"
+    
     const windowCount = Math.floor(Math.random() * 8) + 3; 
 
     return Array.from({ length: windowCount }).map((_, i) => {

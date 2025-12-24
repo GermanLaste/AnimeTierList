@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useTemplates } from '../hooks/useTemplates';
 
 export function TemplateGallery({ isOpen, onClose, onLoad, viewMode = 'community', user }) {
-  const { getTemplates } = useTemplates(); // Usamos la nueva función
+  const { getTemplates } = useTemplates();
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -30,8 +30,8 @@ export function TemplateGallery({ isOpen, onClose, onLoad, viewMode = 'community
   // Limpiar búsqueda al cerrar
   useEffect(() => { if (!isOpen) setSearchTerm(''); }, [isOpen]);
 
-  // Helper de Imágenes (Igual que antes)
-  const getImageUrl = (animeData) => { /* ... tu código de siempre ... */ return animeData.image || animeData.images?.jpg?.image_url || 'https://via.placeholder.com/100'; };
+  // Helper de Imágenes
+  const getImageUrl = (animeData) => { return animeData.image || animeData.images?.jpg?.image_url || 'https://via.placeholder.com/100'; };
 
   if (!isOpen) return null;
 
@@ -78,10 +78,10 @@ export function TemplateGallery({ isOpen, onClose, onLoad, viewMode = 'community
              </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-               {/* ... (Aquí va tu mapeo de cards exactamente igual que antes) ... */}
+            
                {templates.map(template => (
                    <div key={template.id} className="bg-gray-800/40 border border-gray-700/50 rounded-xl overflow-hidden hover:border-blue-500/50 transition-all group flex flex-col">
-                      {/* ... Copia tu card visual aquí (preview imágenes, autor, botón cargar) ... */}
+                  
                       <div className="h-32 bg-gray-900/50 relative overflow-hidden">
                         {/* Imágenes */}
                         <div className="absolute inset-0 grid grid-cols-4 gap-0.5 opacity-80 group-hover:opacity-100 transition-opacity">

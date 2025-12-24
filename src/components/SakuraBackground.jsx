@@ -4,7 +4,6 @@ export function SakuraBackground() {
   const [petals, setPetals] = useState([]);
 
   useEffect(() => {
-    // Generamos 30 pétalos con propiedades aleatorias
     const newPetals = Array.from({ length: 50 }).map((_, i) => ({
       id: i,
       left: Math.random() * 100 + '%', // Posición horizontal
