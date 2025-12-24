@@ -63,24 +63,28 @@ To run this project locally, follow these steps:
     ```
 
 3.  **Environment Variables**
-    Create a `.env` file in the root directory based on the example:
+    Create a `.env` file in the root directory:
     ```bash
     cp .env.example .env
     ```
-    
-    Fill in your Supabase credentials in the `.env` file:
+    Fill in your Supabase credentials:
     ```env
     VITE_SUPABASE_URL=your_supabase_project_url
     VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
     ```
-    *(You will need to create a Supabase project and set up the `tier_templates` and `template_items` tables)*.
 
-4.  **Start the development server**
+4.  **Database Setup**
+    * Go to your Supabase Project Dashboard -> SQL Editor.
+    * Open the `database.sql` file located in this repository.
+    * Copy and paste the content into the SQL Editor and run it.
+    * *This will create the necessary tables and security policies (RLS).*
+
+5.  **Start the development server**
     ```bash
     npm run dev
     ```
 
-5.  Open `http://localhost:5173` in your browser.
+6.  Open `http://localhost:5173` in your browser.
 
 ---
 
@@ -104,3 +108,22 @@ src/
 ├── lib/
 │   └── supabaseClient.js    # Database connection client
 └── App.jsx                  # Main Layout & Context
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome and greatly appreciated.
+
+1. Fork the project
+2. Create your feature branch  
+   `git checkout -b feature/AmazingFeature`
+3. Commit your changes  
+   `git commit -m "Add AmazingFeature"`
+4. Push to the branch  
+   `git push origin feature/AmazingFeature`
+5. Open a Pull Request
+## 📄 License
+Distributed under the MIT License. See LICENSE for more information.
+
+<p align="center"> Built with ❤️ and ☕ by <a href="https://www.google.com/search?q=https://github.com/germanlaste">GermanLaste</a> </p>
